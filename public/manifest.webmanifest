@@ -1,0 +1,10 @@
+{
+  "name": "Y's Guys League",
+  "short_name": "Y's Guys",
+  "description": "The official Y's Guys basketball league platform.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f5f8",
+  "theme_color": "#0A2D5E",
+  "icons": []
+}
