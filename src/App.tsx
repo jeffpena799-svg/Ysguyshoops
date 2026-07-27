@@ -59,10 +59,28 @@ const initialSeasons = [
   { name:"2025 Awards Season", status:"Archived", games:0, champion:"—" },
 ];
 
+type LeagueData = { players: Player[]; games: Game[]; awards: Award[]; seasons: typeof initialSeasons };
+
 function gp(p: Player){ return p.wins+p.losses; }
-function pct(p: Player){ return Math.round((p.wins/gp(p))*1000)/10; }
-function avg(v:number,p:Player){ return Math.round((v/gp(p))*10)/10; }
+function pct(p: Player){ return gp(p) ? Math.round((p.wins/gp(p))*1000)/10 : 0; }
+function avg(v:number,p:Player){ return gp(p) ? Math.round((v/gp(p))*10)/10 : 0; }
 function initials(name:string){ return name.split(" ").map(x=>x[0]).join("").slice(0,2).toUpperCase(); }
+function loadData<T>(key:string,fallback:T):T {
+  try {
+    const stored=localStorage.getItem(key);
+    return stored ? JSON.parse(stored) as T : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function exportData(data:LeagueData){
+  const blob=new Blob([JSON.stringify({...data,exportedAt:new Date().toISOString(),version:"2.2"},null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement("a");
+  link.href=url;link.download=`ys-guys-backup-${new Date().toISOString().slice(0,10)}.json`;link.click();
+  URL.revokeObjectURL(url);
+}
+function makeId(prefix:string){ return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`; }
 
 export default function App(){
   const [view,setView]=useState<View>("home");
@@ -74,13 +92,20 @@ export default function App(){
   const [awards,setAwards]=useState<Award[]>(()=>loadData("yg-awards",initialAwards));
   const [seasons,setSeasons]=useState(()=>loadData("yg-seasons",initialSeasons));
   const records=initialRecords;
-  const [adminTab,setAdminTab]=useState<"game"|"player"|"award"|"data">("game");
+  const [adminTab,setAdminTab]=useState<"games"|"players"|"awards"|"data">("games");
   const [toast,setToast]=useState("");
 
   const saveAll=(next?:{players?:Player[];games?:Game[];awards?:Award[];seasons?:typeof initialSeasons})=>{
     const p=next?.players??players,g=next?.games??games,a=next?.awards??awards,se=next?.seasons??seasons;
     localStorage.setItem("yg-players",JSON.stringify(p));localStorage.setItem("yg-games",JSON.stringify(g));localStorage.setItem("yg-awards",JSON.stringify(a));localStorage.setItem("yg-seasons",JSON.stringify(se));
     setToast("Saved on this device");setTimeout(()=>setToast(""),1800);
+  };
+  const replaceData=(data:LeagueData)=>{
+    setPlayers(data.players);setGames(data.games);setAwards(data.awards);setSeasons(data.seasons);saveAll(data);
+  };
+  const resetData=()=>{
+    if(!confirm("Reset all locally saved changes and restore the original league data?")) return;
+    replaceData({players:initialPlayers,games:initialGames,awards:initialAwards,seasons:initialSeasons});
   };
 
   const filtered=useMemo(()=>players.filter(p => `${p.name} ${p.nickname}`.toLowerCase().includes(search.toLowerCase())),[search]);
@@ -94,7 +119,7 @@ export default function App(){
 
   return <div className="app"><style>{styles}</style>
     <header className="topbar">
-      <button className="brand" onClick={()=>go("home")}><span className="ball">YG</span><span><b>Y'S GUYS</b><small>League Platform · v2.1</small></span></button>
+      <button className="brand" onClick={()=>go("home")}><span className="ball">YG</span><span><b>Y'S GUYS</b><small>League Platform · v2.2</small></span></button>
       <button className="seasonPill" onClick={()=>go("seasons")}>Summer 2026⌄</button>
     </header>
 
@@ -162,14 +187,14 @@ export default function App(){
         <div className="seasonList">{seasons.map(s=><article className="seasonCard" key={s.name}><div><span className={s.status==="Active"?"status active":"status"}>{s.status}</span><h3>{s.name}</h3><p>{s.games} recorded games · Champion: {s.champion}</p></div><button onClick={()=>go("home")}>Open →</button></article>)}</div>
       </Page>}
 
-      {view==="commissioner" && <Page eyebrow="COMMISSIONER MODE" title="Run the league without editing code." subtitle="Add games, players and awards. Changes save to this browser automatically.">
+      {view==="commissioner" && <Page eyebrow="COMMISSIONER MODE · v2.2" title="Run the league without editing code." subtitle="Create, correct and safely back up league data from one control center.">
         <div className="adminTabs">
-          {([['game','New game'],['player','New player'],['award','New award'],['data','Data tools']] as const).map(([k,l])=><button key={k} className={adminTab===k?'active':''} onClick={()=>setAdminTab(k)}>{l}</button>)}
+          {([['games','Games'],['players','Players'],['awards','Awards'],['data','Backups']] as const).map(([k,l])=><button key={k} className={adminTab===k?'active':''} onClick={()=>setAdminTab(k)}>{l}</button>)}
         </div>
-        {adminTab==='game' && <GameForm players={players} onAdd={(g)=>{const next=[...games,g];setGames(next);saveAll({games:next});}}/>}
-        {adminTab==='player' && <PlayerForm onAdd={(p)=>{const next=[...players,p];setPlayers(next);saveAll({players:next});}}/>}
-        {adminTab==='award' && <AwardForm players={players} onAdd={(a)=>{const next=[...awards,a];setAwards(next);saveAll({awards:next});}}/>}
-        {adminTab==='data' && <DataTools onExport={()=>exportData({players,games,awards,seasons})} onReset={()=>{if(confirm('Reset all locally saved changes?')){localStorage.removeItem('yg-players');localStorage.removeItem('yg-games');localStorage.removeItem('yg-awards');localStorage.removeItem('yg-seasons');location.reload();}}}/>}
+        {adminTab==='games' && <GameManager games={games} players={players} onChange={(next)=>{setGames(next);saveAll({games:next});}}/>}
+        {adminTab==='players' && <PlayerManager players={players} onChange={(next)=>{setPlayers(next);saveAll({players:next});}}/>}
+        {adminTab==='awards' && <AwardManager awards={awards} players={players} onChange={(next)=>{setAwards(next);saveAll({awards:next});}}/>}
+        {adminTab==='data' && <DataTools data={{players,games,awards,seasons}} onImport={replaceData} onReset={resetData}/>}
       </Page>}
 
       {view==="more" && <Page eyebrow="LEAGUE MENU" title="More from Y's Guys" subtitle="History, honors and league information."><div className="menuList"><Menu label="Record Book" icon="🏆" onClick={()=>go("records")}/><Menu label="Awards Center" icon="🥇" onClick={()=>go("awards")}/><Menu label="Season Archive" icon="🗂️" onClick={()=>go("seasons")}/><Menu label="Hall of Fame" icon="🏛️" badge="Coming in v2.2"/><Menu label="Commissioner Mode" icon="🔒" onClick={()=>go("commissioner")}/></div></Page>}
@@ -184,6 +209,85 @@ export default function App(){
   </div>
 }
 
+function GameManager({games,players,onChange}:{games:Game[];players:Player[];onChange:(games:Game[])=>void}){
+  const empty:Game={id:"",date:"",title:"",teamA:"",scoreA:0,teamB:"",scoreB:0,mvp:players[0]?.name??"",recap:""};
+  const [draft,setDraft]=useState<Game>(empty);
+  const editing=Boolean(draft.id);
+  const save=(e:React.FormEvent)=>{
+    e.preventDefault();
+    if(!draft.date.trim()||!draft.title.trim()||!draft.teamA.trim()||!draft.teamB.trim()) return alert("Date, game title and both team names are required.");
+    if(draft.teamA.trim().toLowerCase()===draft.teamB.trim().toLowerCase()) return alert("The two team names must be different.");
+    const clean={...draft,id:draft.id||makeId("game"),scoreA:Number(draft.scoreA),scoreB:Number(draft.scoreB)};
+    onChange(editing?games.map(g=>g.id===clean.id?clean:g):[...games,clean]);setDraft(empty);
+  };
+  const remove=(id:string)=>{if(confirm("Delete this game permanently from this device?")){onChange(games.filter(g=>g.id!==id));setDraft(empty);}};
+  return <div className="managerGrid"><form className="adminCard" onSubmit={save}><h2>{editing?"Edit game":"Add a game"}</h2><p>Scores and recaps appear in Game History immediately.</p><div className="formGrid">
+    <label>Date<input required value={draft.date} onChange={e=>setDraft({...draft,date:e.target.value})} placeholder="July 30, 2026"/></label>
+    <label>Game title<input required value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} placeholder="Summer League Week 3"/></label>
+    <label>Team A<input required value={draft.teamA} onChange={e=>setDraft({...draft,teamA:e.target.value})}/></label>
+    <label>Team A score<input min="0" type="number" value={draft.scoreA} onChange={e=>setDraft({...draft,scoreA:Number(e.target.value)})}/></label>
+    <label>Team B<input required value={draft.teamB} onChange={e=>setDraft({...draft,teamB:e.target.value})}/></label>
+    <label>Team B score<input min="0" type="number" value={draft.scoreB} onChange={e=>setDraft({...draft,scoreB:Number(e.target.value)})}/></label>
+    <label className="wide">Player of the game<select value={draft.mvp} onChange={e=>setDraft({...draft,mvp:e.target.value})}><option value="">Select a player</option>{players.map(p=><option key={p.id}>{p.name}</option>)}</select></label>
+    <label className="wide">Recap<textarea value={draft.recap} onChange={e=>setDraft({...draft,recap:e.target.value})} placeholder="What decided the game?"/></label>
+  </div><div className="formActions"><button className="primary" type="submit">{editing?"Save changes":"Add game"}</button>{editing&&<button className="secondary" type="button" onClick={()=>setDraft(empty)}>Cancel</button>}</div></form>
+  <ManageList title="Recorded games" empty="No games recorded yet.">{games.map(g=><div className="manageRow" key={g.id}><div><b>{g.title}</b><small>{g.date} · {g.teamA} {g.scoreA}–{g.scoreB} {g.teamB}</small></div><button onClick={()=>setDraft(g)}>Edit</button><button className="deleteLink" onClick={()=>remove(g.id)}>Delete</button></div>)}</ManageList></div>;
+}
+
+function PlayerManager({players,onChange}:{players:Player[];onChange:(players:Player[])=>void}){
+  const empty:Player={id:"",name:"",nickname:"",position:"G",wins:0,losses:0,pts:0,reb:0,ast:0,turnovers:0,awards:[],bio:""};
+  const [draft,setDraft]=useState<Player>(empty);
+  const editing=Boolean(draft.id);
+  const save=(e:React.FormEvent)=>{
+    e.preventDefault();
+    if(!draft.name.trim()) return alert("Player name is required.");
+    if(!editing&&players.some(p=>p.name.toLowerCase()===draft.name.trim().toLowerCase())) return alert("A player with that name already exists.");
+    const clean={...draft,id:draft.id||makeId("player"),name:draft.name.trim(),nickname:draft.nickname.trim(),awards:draft.awards.filter(Boolean)};
+    onChange(editing?players.map(p=>p.id===clean.id?clean:p):[...players,clean]);setDraft(empty);
+  };
+  const numberField=(label:keyof Pick<Player,"wins"|"losses"|"pts"|"reb"|"ast"|"turnovers">)=><label>{label[0].toUpperCase()+label.slice(1)}<input min="0" type="number" value={draft[label]} onChange={e=>setDraft({...draft,[label]:Number(e.target.value)})}/></label>;
+  const remove=(id:string)=>{if(confirm("Delete this player? Existing game and award names will remain as historical text.")){onChange(players.filter(p=>p.id!==id));setDraft(empty);}};
+  return <div className="managerGrid"><form className="adminCard" onSubmit={save}><h2>{editing?"Edit player":"Add a player"}</h2><p>Correct totals, profile details and awards without resetting the league.</p><div className="formGrid">
+    <label>Name<input required value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
+    <label>Nickname<input value={draft.nickname} onChange={e=>setDraft({...draft,nickname:e.target.value})}/></label>
+    <label>Position<select value={draft.position} onChange={e=>setDraft({...draft,position:e.target.value})}>{["G","F","C","PG","SG","SF","PF"].map(x=><option key={x}>{x}</option>)}</select></label>
+    {numberField("wins")}{numberField("losses")}{numberField("pts")}{numberField("reb")}{numberField("ast")}{numberField("turnovers")}
+    <label className="wide">Awards, separated by commas<input value={draft.awards.join(", ")} onChange={e=>setDraft({...draft,awards:e.target.value.split(",").map(x=>x.trim())})}/></label>
+    <label className="wide">Bio<textarea value={draft.bio} onChange={e=>setDraft({...draft,bio:e.target.value})}/></label>
+  </div><div className="formActions"><button className="primary" type="submit">{editing?"Save changes":"Add player"}</button>{editing&&<button className="secondary" type="button" onClick={()=>setDraft(empty)}>Cancel</button>}</div></form>
+  <ManageList title="Current roster" empty="No players yet.">{players.map(p=><div className="manageRow" key={p.id}><div><b>{p.name}</b><small>{p.position} · {p.wins}-{p.losses} · {p.pts} PTS</small></div><button onClick={()=>setDraft({...p,awards:[...p.awards]})}>Edit</button><button className="deleteLink" onClick={()=>remove(p.id)}>Delete</button></div>)}</ManageList></div>;
+}
+
+function AwardManager({awards,players,onChange}:{awards:Award[];players:Player[];onChange:(awards:Award[])=>void}){
+  const empty:Award={season:"2026",name:"",winner:players[0]?.name??"",icon:"🏆"};
+  const [draft,setDraft]=useState<Award>(empty);
+  const [editIndex,setEditIndex]=useState<number|null>(null);
+  const save=(e:React.FormEvent)=>{e.preventDefault();if(!draft.name.trim()||!draft.winner.trim())return alert("Award name and winner are required.");const next=editIndex===null?[...awards,draft]:awards.map((a,i)=>i===editIndex?draft:a);onChange(next);setDraft(empty);setEditIndex(null);};
+  const remove=(index:number)=>{if(confirm("Delete this award?"))onChange(awards.filter((_,i)=>i!==index));};
+  return <div className="managerGrid"><form className="adminCard" onSubmit={save}><h2>{editIndex===null?"Add an award":"Edit award"}</h2><p>Maintain the official trophy room.</p><div className="formGrid">
+    <label>Season<input required value={draft.season} onChange={e=>setDraft({...draft,season:e.target.value})}/></label>
+    <label>Icon<input value={draft.icon} onChange={e=>setDraft({...draft,icon:e.target.value})}/></label>
+    <label className="wide">Award name<input required value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
+    <label className="wide">Winner<select value={draft.winner} onChange={e=>setDraft({...draft,winner:e.target.value})}><option value="">Select a player</option>{players.map(p=><option key={p.id}>{p.name}</option>)}</select></label>
+  </div><div className="formActions"><button className="primary" type="submit">{editIndex===null?"Add award":"Save changes"}</button>{editIndex!==null&&<button className="secondary" type="button" onClick={()=>{setDraft(empty);setEditIndex(null)}}>Cancel</button>}</div></form>
+  <ManageList title="Award history" empty="No awards yet.">{awards.map((a,i)=><div className="manageRow" key={`${a.season}-${a.name}-${i}`}><div><b>{a.icon} {a.name}</b><small>{a.season} · {a.winner}</small></div><button onClick={()=>{setDraft(a);setEditIndex(i)}}>Edit</button><button className="deleteLink" onClick={()=>remove(i)}>Delete</button></div>)}</ManageList></div>;
+}
+
+function DataTools({data,onImport,onReset}:{data:LeagueData;onImport:(data:LeagueData)=>void;onReset:()=>void}){
+  const importFile=(event:React.ChangeEvent<HTMLInputElement>)=>{
+    const file=event.target.files?.[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));if(!Array.isArray(parsed.players)||!Array.isArray(parsed.games)||!Array.isArray(parsed.awards)||!Array.isArray(parsed.seasons))throw new Error();if(confirm("Replace this device's league data with the selected backup?"))onImport({players:parsed.players,games:parsed.games,awards:parsed.awards,seasons:parsed.seasons});}catch{alert("That file is not a valid Y's Guys backup.");}};
+    reader.readAsText(file);event.target.value="";
+  };
+  return <section className="adminCard"><h2>Backups & recovery</h2><p>Export before major changes. A backup can restore the entire league on this or another device.</p><div className="dataActions"><button className="primary" onClick={()=>exportData(data)}>Download backup</button><label className="uploadButton">Import backup<input type="file" accept="application/json" onChange={importFile}/></label><button className="danger" onClick={onReset}>Restore original data</button></div><div className="securityNote"><b>Current storage</b><span>Version 2.2 safely stores data in this browser. Shared cross-device storage is the next infrastructure upgrade and will require a hosted database plus commissioner authentication.</span></div></section>;
+}
+
+function ManageList({title,empty,children}:{title:string;empty:string;children:React.ReactNode}){
+  const count=React.Children.count(children);
+  return <section className="adminCard manageList"><h2>{title}</h2><p>{count} {count===1?"record":"records"}</p>{count?children:<div className="empty">{empty}</div>}</section>;
+}
+
 function Section({eyebrow,title,action,onAction}:{eyebrow:string,title:string,action?:string,onAction?:()=>void}){return <div className="sectionTitle"><div><span>{eyebrow}</span><h2>{title}</h2></div>{action&&<button onClick={onAction}>{action}</button>}</div>}
 function LeaderCard({label,player,value,suffix}:{label:string,player:Player,value:string|number,suffix:string}){return <article className="leaderCard"><small>{label}</small><div><span className="avatar">{initials(player.name)}</span><b>{player.name}</b></div><strong>{value}</strong><em>{suffix}</em></article>}
 function Explore({icon,title,copy,onClick}:{icon:string,title:string,copy:string,onClick:()=>void}){return <button className="explore" onClick={onClick}><span>{icon}</span><div><b>{title}</b><small>{copy}</small></div><i>→</i></button>}
@@ -193,7 +297,7 @@ function Nav({label,icon,active,onClick}:{label:string,icon:string,active:boolea
 
 const styles = `
 *{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:${NAVY};font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.app{min-height:100vh}.topbar{height:76px;position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:0 max(20px,calc((100vw - 1180px)/2));background:rgba(255,255,255,.94);backdrop-filter:blur(16px);border-bottom:1px solid #e7eaf0}.brand{display:flex;align-items:center;gap:12px;border:0;background:none;color:${NAVY};text-align:left}.brand .ball{width:42px;height:42px;border-radius:14px;background:${NAVY};color:white;display:grid;place-items:center;font-weight:900}.brand b{display:block;letter-spacing:.08em}.brand small{display:block;color:#6c7890;margin-top:2px}.seasonPill{border:1px solid #dbe0e8;background:white;padding:10px 14px;border-radius:999px;color:${NAVY};font-weight:800}main{max-width:1180px;margin:auto;padding:28px 20px 110px}.hero{background:linear-gradient(135deg,#081f43,${NAVY} 60%,#144b85);color:white;border-radius:30px;padding:38px;display:grid;grid-template-columns:1.5fr .7fr;gap:28px;box-shadow:0 22px 50px rgba(10,45,94,.22);overflow:hidden;position:relative}.hero:after{content:"";position:absolute;width:320px;height:320px;border-radius:50%;background:rgba(199,162,77,.12);right:-100px;top:-120px}.live{font-size:11px;font-weight:900;letter-spacing:.14em;background:rgba(255,255,255,.12);padding:8px 11px;border-radius:999px;display:inline-flex;gap:7px;align-items:center}.live i{width:7px;height:7px;border-radius:50%;background:#65df8b}.hero h1{font-size:clamp(34px,6vw,62px);line-height:.98;max-width:720px;margin:20px 0 14px}.hero p{font-size:18px;max-width:610px;color:#dfe8f4}.heroActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}.heroActions button{border:0;background:${GOLD};color:#071f42;padding:13px 17px;border-radius:13px;font-weight:900}.heroActions .ghost{background:transparent;border:1px solid rgba(255,255,255,.35);color:white}.heroScore{align-self:center;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.09);border-radius:22px;padding:24px;display:flex;flex-direction:column;position:relative;z-index:1}.heroScore small{letter-spacing:.14em;font-weight:900}.heroScore b{font-size:48px;margin:8px 0}.heroScore span{color:#dce5f2}.sectionTitle{display:flex;align-items:end;justify-content:space-between;margin:34px 2px 16px}.sectionTitle span,.pageHead>span{font-size:11px;letter-spacing:.16em;font-weight:900;color:#9b7628}.sectionTitle h2{margin:4px 0 0;font-size:26px}.sectionTitle button{border:0;background:none;color:${NAVY};font-weight:900}.leaderGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.leaderCard,.panel,.chart,.gameCard,.playerCard,.recordCard,.awardCard,.seasonCard,.menuItem{background:white;border:1px solid #e6e9ef;box-shadow:0 10px 26px rgba(23,42,73,.06)}.leaderCard{border-radius:20px;padding:18px}.leaderCard>small{color:#778399;font-weight:800}.leaderCard>div{display:flex;align-items:center;gap:9px;margin:14px 0}.avatar{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:#edf1f7;color:${NAVY};font-size:12px;font-weight:900}.leaderCard>strong{font-size:31px}.leaderCard em{font-size:11px;font-style:normal;font-weight:900;margin-left:6px;color:#9b7628}.twoCol{display:grid;grid-template-columns:1.15fr .85fr;gap:18px}.panel{border-radius:24px;padding:0 20px 18px}.panel .sectionTitle{margin-top:20px}.featureNews{border-radius:18px;background:${NAVY};color:white;padding:22px}.featureNews span{font-size:10px;font-weight:900;letter-spacing:.15em;color:#e8c876}.featureNews h3{font-size:23px;margin:8px 0}.featureNews p{color:#dce5f0}.featureNews button{border:0;background:none;color:#e8c876;font-weight:900;padding:0}.newsRow{display:grid;grid-template-columns:125px 1fr;gap:12px;padding:15px 3px;border-bottom:1px solid #edf0f4;font-size:14px}.newsRow span{color:#6f7a8d}.rankRow{width:100%;display:flex;align-items:center;gap:10px;border:0;border-bottom:1px solid #edf0f4;background:none;padding:12px 0;color:${NAVY};text-align:left}.rank{font-weight:900;width:20px}.grow{display:flex;flex-direction:column;flex:1}.grow small{color:#7c8798;margin-top:2px}.exploreGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.explore{border:1px solid #e3e7ed;background:white;border-radius:20px;padding:20px;text-align:left;display:flex;align-items:center;gap:13px;color:${NAVY};box-shadow:0 10px 24px rgba(20,40,70,.05)}.explore>span{font-size:28px}.explore div{display:flex;flex-direction:column;flex:1}.explore small{color:#788397;margin-top:4px;line-height:1.35}.explore i{font-style:normal;font-weight:900}.pageHead{padding:22px 2px 24px}.pageHead h1{font-size:clamp(34px,6vw,56px);line-height:1;margin:8px 0 12px}.pageHead p{color:#6e798b;font-size:17px;margin:0}.gameList{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.gameCard{border-radius:24px;padding:24px}.gameTop{display:flex;justify-content:space-between;color:#7b8698;font-size:12px}.gameTop b{color:#9b7628}.gameCard h3{font-size:22px}.scoreLine{display:flex;justify-content:space-between;font-size:20px;padding:11px 0;border-bottom:1px solid #edf0f4}.scoreLine strong{font-size:28px}.scoreLine.loser{color:#758197}.mvp{margin:16px 0 8px;padding:10px 12px;background:#f8f1df;border-radius:12px;font-size:13px}.gameCard p{color:#6d788b;line-height:1.55}.search{width:100%;padding:15px 17px;border-radius:15px;border:1px solid #dfe4eb;font-size:16px;margin-bottom:18px}.playerGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.playerCard{border-radius:22px;padding:20px;text-align:left;color:${NAVY};position:relative}.bigAvatar{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:${NAVY};color:white;font-weight:900;font-size:18px}.pos{position:absolute;right:16px;top:16px;background:#f1e7cc;color:#87671f;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900}.playerCard h3{margin:14px 0 2px;font-size:20px}.playerCard>small{color:#7d8899}.miniStats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:16px 0}.miniStats span{background:#f5f7fa;border-radius:10px;padding:9px 4px;text-align:center;font-size:9px;font-weight:900;color:#8a94a4}.miniStats b{display:block;color:${NAVY};font-size:15px}.record{font-size:13px;font-weight:800}.chips{display:flex;gap:8px;overflow:auto;margin-bottom:16px}.chips button{border:1px solid #dfe4eb;background:white;color:${NAVY};font-weight:900;padding:10px 15px;border-radius:999px}.chips button.active{background:${NAVY};color:white}.chart{border-radius:24px;padding:20px}.recordHero{display:flex;align-items:center;gap:20px;background:linear-gradient(135deg,#f7edd1,#fff);border:1px solid #ead8a8;border-radius:25px;padding:24px;margin-bottom:18px}.recordHero>span{font-size:55px}.recordHero small{letter-spacing:.14em;font-weight:900;color:#9b7628}.recordHero h2{margin:5px 0}.recordHero p{margin:0;color:#776639}.recordGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.recordCard{border-radius:20px;padding:20px;display:flex;flex-direction:column}.recordCard>span{font-size:10px;letter-spacing:.12em;font-weight:900;color:#9b7628}.recordCard h3{margin:8px 0}.recordCard strong{font-size:30px}.recordCard b{margin:7px 0}.recordCard small{color:#7c8798}.note{margin-top:18px;background:#eaf0f7;border-radius:16px;padding:16px;color:#52637b;font-size:14px}.awardBanner{height:150px;border-radius:26px;background:linear-gradient(135deg,#091f43,${NAVY});display:flex;align-items:center;justify-content:center;flex-direction:column;color:white;margin-bottom:18px}.awardBanner div{font-size:52px;font-weight:1000;color:#e7c977}.awardBanner span{font-size:11px;letter-spacing:.22em;font-weight:900}.awardGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.awardCard{border-radius:21px;padding:22px;text-align:center}.awardCard>span{font-size:38px}.awardCard small{display:block;margin-top:9px;color:#9b7628;font-weight:900}.awardCard h3{min-height:44px}.awardCard b{font-size:18px}.seasonList{display:grid;gap:14px}.seasonCard{border-radius:21px;padding:22px;display:flex;align-items:center;justify-content:space-between}.seasonCard h3{font-size:24px;margin:8px 0}.seasonCard p{color:#778296}.seasonCard button{border:0;background:${NAVY};color:white;padding:11px 15px;border-radius:11px;font-weight:900}.status{font-size:10px;letter-spacing:.12em;font-weight:900;background:#edf0f4;padding:6px 8px;border-radius:999px}.status.active{background:#dff5e6;color:#247744}.menuList{display:grid;gap:10px}.menuItem{width:100%;border-radius:17px;padding:17px;display:flex;align-items:center;gap:14px;color:${NAVY};text-align:left}.menuItem>span{font-size:24px}.menuItem b{flex:1}.menuItem small{color:#8993a2}.menuItem i{font-style:normal}.menuItem:disabled{opacity:.65}.bottomNav{position:fixed;bottom:0;left:0;right:0;z-index:30;height:76px;background:rgba(255,255,255,.96);backdrop-filter:blur(18px);border-top:1px solid #e1e5eb;display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}.bottomNav button{width:min(130px,20%);border:0;background:none;color:#7d8797;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.bottomNav button span{font-size:21px;font-weight:900}.bottomNav button small{font-size:10px;font-weight:800}.bottomNav button.active{color:${NAVY}}.modalBackdrop{position:fixed;inset:0;background:rgba(3,15,33,.68);z-index:50;display:grid;place-items:center;padding:18px}.profileModal{width:min(520px,100%);max-height:88vh;overflow:auto;background:white;border-radius:28px;padding:25px;position:relative}.close{position:absolute;right:16px;top:14px;width:36px;height:36px;border-radius:50%;border:0;background:#eef1f5;font-size:22px}.profileHead{display:flex;align-items:center;gap:15px;padding-right:30px}.profileAvatar{width:76px;height:76px;border-radius:23px;background:${NAVY};color:white;display:grid;place-items:center;font-size:23px;font-weight:900}.profileHead span{font-size:10px;letter-spacing:.12em;font-weight:900;color:#9b7628}.profileHead h2{font-size:30px;margin:5px 0 0}.profileHead p{margin:2px 0;color:#748095}.profileStats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:22px 0}.profileStats span{background:#f3f5f8;border-radius:12px;padding:12px 5px;text-align:center;font-size:9px;font-weight:900;color:#7c8798}.profileStats b{display:block;font-size:18px;color:${NAVY}}.bio{line-height:1.55;color:#647187}.honor{padding:12px;background:#fbf4df;border-radius:12px;margin:8px 0;font-weight:800}.empty{color:#8993a2}.legacy{margin-top:20px;border-radius:18px;background:${NAVY};color:white;padding:18px;display:grid;grid-template-columns:1fr auto;align-items:center}.legacy span{font-size:11px;letter-spacing:.13em;font-weight:900}.legacy b{font-size:34px;color:#e7c977}.legacy small{grid-column:1/3;color:#cdd8e6}
-.adminTabs{display:flex;gap:8px;overflow:auto;margin-bottom:16px}.adminTabs button{border:1px solid #dce2ea;background:white;color:${NAVY};padding:11px 15px;border-radius:999px;font-weight:900;white-space:nowrap}.adminTabs button.active{background:${NAVY};color:white}.adminCard{background:white;border:1px solid #e1e6ed;border-radius:24px;padding:24px;box-shadow:0 12px 30px rgba(20,40,70,.07)}.adminCard h2{margin:0 0 6px;font-size:26px}.adminCard>p{margin:0 0 20px;color:#718096}.formGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.formGrid label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:900;color:#65738a}.formGrid input,.formGrid select,.formGrid textarea{width:100%;border:1px solid #dbe1e9;border-radius:12px;padding:13px;font:inherit;color:${NAVY};background:white}.formGrid textarea{min-height:110px;resize:vertical}.formGrid .wide{grid-column:1/-1}.primary,.danger{border:0;border-radius:13px;padding:13px 17px;font-weight:900;margin-top:18px}.primary{background:${NAVY};color:white}.danger{background:#fff0f0;color:#a62e2e;border:1px solid #efcaca}.dataActions{display:flex;gap:10px;flex-wrap:wrap}.securityNote{margin-top:20px;padding:16px;border-radius:15px;background:#fff8e8;display:flex;flex-direction:column;gap:5px;color:#775f25}.securityNote span{line-height:1.5}.toast{position:fixed;right:18px;bottom:92px;z-index:60;background:#133e72;color:white;padding:12px 16px;border-radius:14px;font-weight:900;box-shadow:0 14px 35px rgba(0,0,0,.2)}
-@media(max-width:900px){.leaderGrid,.exploreGrid,.playerGrid{grid-template-columns:repeat(2,1fr)}.twoCol{grid-template-columns:1fr}.recordGrid,.awardGrid{grid-template-columns:repeat(2,1fr)}}
+.adminTabs{display:flex;gap:8px;overflow:auto;margin-bottom:16px}.adminTabs button{border:1px solid #dce2ea;background:white;color:${NAVY};padding:11px 15px;border-radius:999px;font-weight:900;white-space:nowrap}.adminTabs button.active{background:${NAVY};color:white}.managerGrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:18px;align-items:start}.adminCard{background:white;border:1px solid #e1e6ed;border-radius:24px;padding:24px;box-shadow:0 12px 30px rgba(20,40,70,.07)}.adminCard h2{margin:0 0 6px;font-size:26px}.adminCard>p{margin:0 0 20px;color:#718096}.formGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.formGrid label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:900;color:#65738a}.formGrid input,.formGrid select,.formGrid textarea{width:100%;border:1px solid #dbe1e9;border-radius:12px;padding:13px;font:inherit;color:${NAVY};background:white}.formGrid textarea{min-height:110px;resize:vertical}.formGrid .wide{grid-column:1/-1}.formActions,.dataActions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.primary,.secondary,.danger,.uploadButton{border:0;border-radius:13px;padding:13px 17px;font-weight:900;margin-top:18px;cursor:pointer;font:inherit}.primary{background:${NAVY};color:white}.secondary,.uploadButton{background:#edf2f8;color:${NAVY}}.danger{background:#fff0f0;color:#a62e2e;border:1px solid #efcaca}.uploadButton input{display:none}.manageList{max-height:690px;overflow:auto}.manageRow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:9px;padding:13px 0;border-top:1px solid #edf0f4}.manageRow div{display:flex;flex-direction:column;min-width:0}.manageRow b,.manageRow small{overflow:hidden;text-overflow:ellipsis}.manageRow small{color:#7b8798;margin-top:3px}.manageRow button{border:0;background:#edf2f8;color:${NAVY};border-radius:10px;padding:8px 10px;font-weight:800}.manageRow .deleteLink{background:#fff0f0;color:#a62e2e}.securityNote{margin-top:20px;padding:16px;border-radius:15px;background:#fff8e8;display:flex;flex-direction:column;gap:5px;color:#775f25}.securityNote span{line-height:1.5}.toast{position:fixed;right:18px;bottom:92px;z-index:60;background:#133e72;color:white;padding:12px 16px;border-radius:14px;font-weight:900;box-shadow:0 14px 35px rgba(0,0,0,.2)}
+@media(max-width:900px){.leaderGrid,.exploreGrid,.playerGrid{grid-template-columns:repeat(2,1fr)}.twoCol,.managerGrid{grid-template-columns:1fr}.recordGrid,.awardGrid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:640px){.formGrid{grid-template-columns:1fr}.formGrid .wide{grid-column:auto}.adminCard{padding:18px}.topbar{height:68px;padding:0 14px}.brand small{display:none}.seasonPill{font-size:11px;padding:9px 10px}main{padding:18px 14px 100px}.hero{grid-template-columns:1fr;padding:26px 22px;border-radius:24px}.hero h1{font-size:39px}.hero p{font-size:15px}.heroScore{display:none}.leaderGrid{grid-template-columns:repeat(2,1fr);gap:10px}.leaderCard{padding:14px}.leaderCard>strong{font-size:25px}.exploreGrid{grid-template-columns:1fr}.gameList,.playerGrid,.recordGrid,.awardGrid{grid-template-columns:1fr}.pageHead h1{font-size:38px}.profileStats{grid-template-columns:repeat(2,1fr)}.newsRow{grid-template-columns:1fr;gap:3px}.recordHero{align-items:flex-start}.recordHero>span{font-size:40px}.seasonCard{align-items:flex-start;gap:12px}.bottomNav{height:70px}}
 `;
