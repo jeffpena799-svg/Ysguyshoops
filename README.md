@@ -1,4 +1,4 @@
-# Y’s Guys League Universe v4.6
+# Y’s Guys League Universe v4.7
 
 The shared, mobile-first home of Y’s Guys basketball.
 
@@ -153,3 +153,13 @@ Required Vercel environment variables:
 - Edit and delete controls for manual history
 - Manual entries merged chronologically with games, awards, news, and Sundays
 - Backward-compatible history migration and cloud restore protection
+
+## v4.7 — Universe Polish
+
+- Commissioner Command Center with direct shortcuts and league-health summaries
+- Remembered My Player selection stored only on the visitor's device
+- My Player shortcuts, personalized Home card, and automatic RSVP/voting identity
+- Cleaner player-centered navigation
+- Permanent color-team framing removed
+- Navy, Cream, and Gold legacy labels migrated to temporary Side A / Side B
+- Team standings removed while all historical scores and player totals are preserved
