@@ -1,19 +1,45 @@
-# Y’s Guys League Platform v2.2
+# Y’s Guys League Platform v2.7
 
-The official mobile-friendly league platform for Y’s Guys basketball.
+The shared, mobile-first home of Y’s Guys basketball.
 
-## Commissioner Mode
+## Release sequence
 
-- Add, edit, and delete completed games
-- Add, edit, and delete player profiles
-- Add, edit, and delete league awards
-- Validate required fields and prevent duplicate players
-- Download complete JSON backups
-- Restore backups on this or another device
-- Restore the original league dataset
-- Safely handle players with zero recorded games
+### v2.3 — Cloud league
 
-## Run locally
+- Shared Postgres league state
+- Public cloud reads
+- Password-protected Commissioner Mode
+- Signed seven-day Commissioner sessions
+- Local fallback when the network is unavailable
+
+### v2.4 — Box scores
+
+- Per-player game stat lines
+- Automatic career point, rebound, assist, turnover, win, and loss adjustments
+- Safe reversal when games are edited or deleted
+- Public box-score views in Game History
+
+### v2.5 — Team center
+
+- Automatic standings
+- Points for, points against, and point differential
+- Rankings derived from official game results
+
+### v2.6 — Legacy system
+
+- Live record calculations
+- Hall of Fame
+- Dynamic legacy qualification
+
+### v2.7 — Sharing and mobile
+
+- Native share sheet and copy-link fallback
+- Installable web-app manifest
+- Offline application shell
+- Cloud-status indicators
+- Mobile Commissioner tools
+
+## Development
 
 ```bash
 npm install
@@ -21,10 +47,8 @@ npm run typecheck
 npm run build
 ```
 
-## Deploy to Vercel
+Required Vercel environment variables:
 
-Framework: Vite  
-Build command: `npm run build`  
-Output directory: `dist`
-
-Version 2.2 stores commissioner changes in the browser where they are entered. A hosted database and commissioner authentication are the next infrastructure upgrade required for shared cross-device data.
+- `POSTGRES_URL`
+- `COMMISSIONER_PASSWORD`
+- `SESSION_SECRET`
