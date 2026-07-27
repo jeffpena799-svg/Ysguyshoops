@@ -1,4 +1,4 @@
-# Y’s Guys League Universe v3.0
+# Y’s Guys League Universe v3.1
 
 The shared, mobile-first home of Y’s Guys basketball.
 
@@ -84,3 +84,13 @@ Required Vercel environment variables:
 - Full-roster Legacy Tracker
 - Hall of Fame progress bars
 - Expanded 2K-style player identity
+
+## v3.1 — Identity & Recovery
+
+- Automatic cloud restore point after every shared save
+- Commissioner revision browser and one-tap restore
+- Jersey numbers and player heights
+- Signature strengths and signature badges
+- Profile banner colors
+- Photo-ready player profiles using hosted image URLs
+- Safer separation between code rollback and league-data recovery
