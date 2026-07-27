@@ -142,3 +142,5 @@ Required Vercel environment variables:
 - Live Instagram-ready 4:5 graphics
 - League leader, latest result, Sunday turnout, and featured-news templates
 - One-tap PNG downloads generated from current league data
+- Commissioner-set player overall ratings with automatic-rating fallback
+- Editable career totals, personal awards, and official Awards Center records
