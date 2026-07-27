@@ -1,4 +1,4 @@
-# Y’s Guys League Platform v2.8
+# Y’s Guys League Universe v2.9
 
 The shared, mobile-first home of Y’s Guys basketball.
 
@@ -63,3 +63,15 @@ Required Vercel environment variables:
 - Prevent duplicate players in a game box score
 - Require a winner before publishing a final
 - Calculate standings and records from final games only
+
+## v2.9 — League Universe
+
+- Dedicated full-screen player profiles
+- 2K-style overall ratings and player archetypes
+- Universal legacy percentage for every player
+- Hall of Fame trajectory messaging
+- Complete official and player-level trophy cases
+- Career box-score game logs
+- Month-by-month league calendar
+- Official digital Rule Book
+- Expanded universe navigation
