@@ -16,6 +16,6 @@ export default function handler(_request, response) {
   response.status(ready ? 200 : 503).json({
     status: ready ? "ready" : "configuration-required",
     configured,
-    version: "4.5-full-universe",
+    version: "4.6-history-editor",
   });
 }
