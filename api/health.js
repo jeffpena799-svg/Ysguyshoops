@@ -16,6 +16,6 @@ export default function handler(_request, response) {
   response.status(ready ? 200 : 503).json({
     status: ready ? "ready" : "configuration-required",
     configured,
-    version: "3.1-identity-history",
+    version: "4.0-community-studio",
   });
 }
