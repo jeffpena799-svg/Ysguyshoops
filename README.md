@@ -1,4 +1,4 @@
-# Y’s Guys League Universe v4.0
+# Y’s Guys League Universe v4.1
 
 The shared, mobile-first home of Y’s Guys basketball.
 
@@ -104,3 +104,15 @@ Required Vercel environment variables:
 - Direct player-profile picture selection
 - Public Community page and dynamic Home headlines
 - News and photos included in cloud revisions and downloaded backups
+
+## v4.1 — Sunday Run
+
+- Public Going, Maybe, and Not Going responses without accounts or PINs
+- Optional arrival time and player note
+- Live attendance totals and timestamped response lists
+- Commissioner Sunday creation, editing, cancellation, locking, and deletion
+- Location, start time, notes, and RSVP deadline controls
+- Sunday history preserved in the shared league database
+- Home dashboard attendance banner
+- Sunday-aware league calendar
+- Every attendance update creates a cloud revision
