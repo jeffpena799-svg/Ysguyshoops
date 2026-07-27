@@ -1,4 +1,4 @@
-# Y’s Guys League Universe v3.1
+# Y’s Guys League Universe v4.0
 
 The shared, mobile-first home of Y’s Guys basketball.
 
@@ -94,3 +94,13 @@ Required Vercel environment variables:
 - Profile banner colors
 - Photo-ready player profiles using hosted image URLs
 - Safer separation between code rollback and league-data recovery
+
+## v4.0 — Community Studio
+
+- Commissioner-managed Community News
+- Create, edit, publish, feature, reorder, and remove stories
+- Direct image selection from a phone or computer
+- Automatic browser-side photo resizing and compression
+- Direct player-profile picture selection
+- Public Community page and dynamic Home headlines
+- News and photos included in cloud revisions and downloaded backups
