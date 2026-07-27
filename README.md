@@ -1,4 +1,4 @@
-# Y’s Guys League Platform v2.7
+# Y’s Guys League Platform v2.8
 
 The shared, mobile-first home of Y’s Guys basketball.
 
@@ -52,3 +52,14 @@ Required Vercel environment variables:
 - `POSTGRES_URL`
 - `COMMISSIONER_PASSWORD`
 - `SESSION_SECRET`
+
+## v2.8 — Game Day
+
+- Schedule upcoming games without affecting standings
+- Record start times and locations
+- Convert scheduled games into official finals
+- Dynamic next-game and latest-final home dashboard
+- Separate upcoming schedule and completed results
+- Prevent duplicate players in a game box score
+- Require a winner before publishing a final
+- Calculate standings and records from final games only
