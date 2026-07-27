@@ -20,7 +20,9 @@ export default async function handler(request, response) {
       const poll = polls[pollIndex];
       if (poll.status !== "open") throw new Error("POLL_CLOSED");
       if (!Array.isArray(data.players) || !data.players.some(player => player.id === voterId)) throw new Error("VOTER_NOT_FOUND");
-      if (!Array.isArray(poll.nomineeIds) || !poll.nomineeIds.includes(nomineeId)) throw new Error("NOMINEE_NOT_FOUND");
+      const currentPlayerIds = Array.isArray(data.players) ? data.players.map(player => player.id) : [];
+      const eligibleNominees = poll.category === "Weekly Award" ? currentPlayerIds : (Array.isArray(poll.nomineeIds) ? poll.nomineeIds : []);
+      if (!eligibleNominees.includes(nomineeId)) throw new Error("NOMINEE_NOT_FOUND");
       const vote = { playerId: voterId, nomineeId, updatedAt: new Date().toISOString() };
       const existing = Array.isArray(poll.votes) ? poll.votes : [];
       const nextPoll = { ...poll, votes: existing.some(item => item.playerId === voterId) ? existing.map(item => item.playerId === voterId ? vote : item) : [...existing, vote] };
