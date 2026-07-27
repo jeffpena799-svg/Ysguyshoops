@@ -177,7 +177,7 @@ export default function App(){
 
   return <div className="app"><style>{styles}</style>
     <header className="topbar">
-      <button className="brand" onClick={()=>go("home")}><span className="ball">YG</span><span><b>Y'S GUYS</b><small>League Platform · v2.2</small></span></button>
+      <button className="brand" onClick={()=>go("home")}><span className="ball">YG</span><span><b>Y'S GUYS</b><small>League Platform · v2.7</small></span></button>
       <button className="seasonPill" onClick={()=>go("seasons")}><span className={`syncDot ${cloudStatus}`}/>{cloudStatus==="cloud"?"Shared":"Offline"} · Summer 2026</button>
     </header>
 
