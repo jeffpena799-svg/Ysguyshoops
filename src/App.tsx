@@ -8,7 +8,7 @@ type Player = {
   id: string; name: string; nickname: string; position: string;
   wins: number; losses: number; pts: number; reb: number; ast: number; turnovers: number;
   awards: string[]; bio: string; jerseyNumber?:string; height?:string; strengths?:string;
-  signatureBadge?:string; photoUrl?:string; bannerColor?:string;
+  signatureBadge?:string; photoUrl?:string; bannerColor?:string; overallOverride?:number;
 };
 
 type StatLine = { playerId:string; team:string; pts:number; reb:number; ast:number; turnovers:number };
@@ -100,7 +100,8 @@ function legacyPercentage(p:Player){
   const winning=Math.min(30,pct(p)*.3),production=Math.min(30,(p.pts+p.reb+p.ast)/7),honors=Math.min(25,p.awards.length*12.5),experience=Math.min(15,gp(p)*.6);
   return Math.max(1,Math.min(100,Math.round(winning+production+honors+experience)));
 }
-function overallRating(p:Player){ return Math.min(99,Math.round(60+avg(p.pts,p)*1.4+avg(p.reb,p)+avg(p.ast,p)*1.2+pct(p)*.08)); }
+function calculatedOverall(p:Player){ return Math.min(99,Math.round(60+avg(p.pts,p)*1.4+avg(p.reb,p)+avg(p.ast,p)*1.2+pct(p)*.08)); }
+function overallRating(p:Player){ return typeof p.overallOverride==="number"?Math.max(40,Math.min(99,Math.round(p.overallOverride))):calculatedOverall(p); }
 function archetype(p:Player){
   const stats=[["Scoring Threat",avg(p.pts,p)],["Glass Cleaner",avg(p.reb,p)],["Floor General",avg(p.ast,p)*1.7],["Winning Connector",pct(p)/12]] as const;
   return [...stats].sort((a,b)=>b[1]-a[1])[0][0];
@@ -408,7 +409,7 @@ function PlayerUniverseProfile({player,games,officialAwards,rank,onBack}:{player
   const honors=[...new Set([...player.awards,...officialAwards.filter(a=>a.winner.toLowerCase()===player.name.toLowerCase()).map(a=>`${a.season} ${a.name}`)])];
   const logs=games.filter(game=>game.boxScore?.some(line=>line.playerId===player.id)).map(game=>({game,line:game.boxScore!.find(line=>line.playerId===player.id)!}));
   const rating=overallRating(player),legacy=legacyPercentage(player);
-  return <><button className="backButton" onClick={onBack}>← All profiles</button><section className="universeHero" style={player.bannerColor?{background:`linear-gradient(135deg,#071c3e,${player.bannerColor})`}:undefined}>{player.photoUrl?<div className="profilePhotoWrap"><img src={player.photoUrl} alt={`${player.name} profile`}/><b>{rating} OVR</b></div>:<div className="ratingOrb"><strong>{rating}</strong><small>OVR</small></div>}<div className="universeIdentity"><span>{player.jerseyNumber?`#${player.jerseyNumber} · `:""}{player.position}{player.height?` · ${player.height}`:""} · {archetype(player)}</span><h1>{player.name}</h1><p>“{player.nickname}”</p><div className="profileTags"><b>#{rank} OVERALL</b><b>{player.wins}-{player.losses} RECORD</b><b>{pct(player)}% WIN</b>{player.signatureBadge&&<b>⭐ {player.signatureBadge}</b>}</div></div><div className="legacyMeter"><div><strong>{legacy}%</strong><small>LEGACY</small></div><span><i style={{width:`${legacy}%`}}/></span><p>{legacy>=80?"Hall of Fame lock":legacy>=60?"Hall of Fame trajectory":legacy>=40?"Building a strong résumé":"Legacy journey underway"}</p></div></section>
+  return <><button className="backButton" onClick={onBack}>← All profiles</button><section className="universeHero" style={player.bannerColor?{background:`linear-gradient(135deg,#071c3e,${player.bannerColor})`}:undefined}>{player.photoUrl?<div className="profilePhotoWrap"><img src={player.photoUrl} alt={`${player.name} profile`}/><b>{rating} OVR</b></div>:<div className="ratingOrb"><strong>{rating}</strong><small>OVR</small></div>}<div className="universeIdentity"><span>{player.jerseyNumber?`#${player.jerseyNumber} · `:""}{player.position}{player.height?` · ${player.height}`:""} · {archetype(player)}</span><h1>{player.name}</h1><p>“{player.nickname}”</p><div className="profileTags"><b>#{rank} OVERALL</b><b>{player.wins}-{player.losses} RECORD</b><b>{pct(player)}% WIN</b>{player.overallOverride!==undefined&&<b>COMMISSIONER OVR</b>}{player.signatureBadge&&<b>⭐ {player.signatureBadge}</b>}</div></div><div className="legacyMeter"><div><strong>{legacy}%</strong><small>LEGACY</small></div><span><i style={{width:`${legacy}%`}}/></span><p>{legacy>=80?"Hall of Fame lock":legacy>=60?"Hall of Fame trajectory":legacy>=40?"Building a strong résumé":"Legacy journey underway"}</p></div></section>
   <div className="profileUniverseGrid"><section className="profilePanel"><Section eyebrow="PLAYER DNA" title="Attribute overview"/>{[["Scoring",Math.min(99,Math.round(60+avg(player.pts,player)*4))],["Rebounding",Math.min(99,Math.round(60+avg(player.reb,player)*4))],["Playmaking",Math.min(99,Math.round(60+avg(player.ast,player)*6))],["Winning",Math.min(99,Math.round(55+pct(player)*.44))]].map(([label,value])=><div className="attributeRow" key={label}><b>{label}</b><span><i style={{width:`${value}%`}}/></span><strong>{value}</strong></div>)}<p className="bio">{player.bio}</p></section>
   <section className="profilePanel"><Section eyebrow="TROPHY CASE" title="Awards & honors"/>{honors.length?honors.map(honor=><div className="profileHonor" key={honor}><span>🏆</span><b>{honor}</b></div>):<div className="empty">No official honors recorded yet.</div>}{player.strengths&&<><h4>Signature strengths</h4><p className="bio">{player.strengths}</p></>}</section></div>
   <section className="profilePanel badgePanel"><Section eyebrow="2K-STYLE IDENTITY" title="Player badges"/><div className="badgeGrid">{playerBadges(player).map(badge=><article className={`playerBadge ${badge.level.toLowerCase()}`} key={badge.name}><span>{badge.icon}</span><div><b>{badge.name}</b><small>{badge.level} badge</small></div></article>)}</div></section>
@@ -594,7 +595,7 @@ function GameManager({games,players,onSave,onDelete}:{games:Game[];players:Playe
 }
 
 function PlayerManager({players,onChange}:{players:Player[];onChange:(players:Player[])=>void}){
-  const empty:Player={id:"",name:"",nickname:"",position:"G",wins:0,losses:0,pts:0,reb:0,ast:0,turnovers:0,awards:[],bio:"",jerseyNumber:"",height:"",strengths:"",signatureBadge:"",photoUrl:"",bannerColor:"#0A2D5E"};
+  const empty:Player={id:"",name:"",nickname:"",position:"G",wins:0,losses:0,pts:0,reb:0,ast:0,turnovers:0,awards:[],bio:"",jerseyNumber:"",height:"",strengths:"",signatureBadge:"",photoUrl:"",bannerColor:"#0A2D5E",overallOverride:undefined};
   const [draft,setDraft]=useState<Player>(empty);
   const [imageStatus,setImageStatus]=useState("");
   const editing=Boolean(draft.id);
@@ -607,16 +608,17 @@ function PlayerManager({players,onChange}:{players:Player[];onChange:(players:Pl
   };
   const numberField=(label:keyof Pick<Player,"wins"|"losses"|"pts"|"reb"|"ast"|"turnovers">)=><label>{label[0].toUpperCase()+label.slice(1)}<input min="0" type="number" value={draft[label]} onChange={e=>setDraft({...draft,[label]:Number(e.target.value)})}/></label>;
   const remove=(id:string)=>{if(confirm("Delete this player? Existing game and award names will remain as historical text.")){onChange(players.filter(p=>p.id!==id));setDraft(empty);}};
-  return <div className="managerGrid"><form className="adminCard" onSubmit={save}><h2>{editing?"Edit player":"Add a player"}</h2><p>Correct totals, profile details and awards without resetting the league.</p><div className="formGrid">
+  return <div className="managerGrid"><form className="adminCard" onSubmit={save}><h2>{editing?"Edit player":"Add a player"}</h2><p>Control the displayed overall, career totals, identity, profile photo and personal awards.</p><div className="formGrid">
     <label>Name<input required value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
     <label>Nickname<input value={draft.nickname} onChange={e=>setDraft({...draft,nickname:e.target.value})}/></label>
     <label>Position<select value={draft.position} onChange={e=>setDraft({...draft,position:e.target.value})}>{["G","F","C","PG","SG","SF","PF"].map(x=><option key={x}>{x}</option>)}</select></label>
     <label>Jersey number<input value={draft.jerseyNumber??""} onChange={e=>setDraft({...draft,jerseyNumber:e.target.value})} placeholder="23"/></label>
     <label>Height<input value={draft.height??""} onChange={e=>setDraft({...draft,height:e.target.value})} placeholder="6'1&quot;"/></label>
+    <label>Overall rating<input min="40" max="99" type="number" value={draft.overallOverride??""} onChange={e=>setDraft({...draft,overallOverride:e.target.value===""?undefined:Number(e.target.value)})} placeholder={String(calculatedOverall(draft))}/><small>{draft.overallOverride===undefined?`Automatic: ${calculatedOverall(draft)} OVR`:`Commissioner override · automatic would be ${calculatedOverall(draft)}`}</small></label>
     <label>Signature badge<input value={draft.signatureBadge??""} onChange={e=>setDraft({...draft,signatureBadge:e.target.value})} placeholder="Acrobat Finisher"/></label>
     <label>Banner color<input type="color" value={draft.bannerColor??"#0A2D5E"} onChange={e=>setDraft({...draft,bannerColor:e.target.value})}/></label>
     {numberField("wins")}{numberField("losses")}{numberField("pts")}{numberField("reb")}{numberField("ast")}{numberField("turnovers")}
-    <label className="wide">Awards, separated by commas<input value={draft.awards.join(", ")} onChange={e=>setDraft({...draft,awards:e.target.value.split(",").map(x=>x.trim())})}/></label>
+    <label className="wide">Player-profile awards, separated by commas<input value={draft.awards.join(", ")} onChange={e=>setDraft({...draft,awards:e.target.value.split(",").map(x=>x.trim())})} placeholder="2025 MVP, Week 3 Player of the Game"/></label>
     <div className="wide imagePicker"><b>Profile picture</b>{draft.photoUrl&&<img src={draft.photoUrl} alt="Player preview"/>}<div><label className="uploadButton">Choose picture<input type="file" accept="image/*" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;setImageStatus("Preparing picture…");try{setDraft({...draft,photoUrl:await compressImage(file)});setImageStatus("Picture ready — save the player to publish it.")}catch(error){setImageStatus(error instanceof Error?error.message:"Could not prepare picture")}e.target.value="";}}/></label>{draft.photoUrl&&<button className="danger compact" type="button" onClick={()=>setDraft({...draft,photoUrl:""})}>Remove picture</button>}</div>{imageStatus&&<small>{imageStatus}</small>}<em>Phone photos are automatically resized for faster loading.</em></div>
     <label className="wide">Or use a hosted photo URL<input type="url" value={draft.photoUrl?.startsWith("data:")?"":draft.photoUrl??""} onChange={e=>setDraft({...draft,photoUrl:e.target.value})} placeholder="https://…"/></label>
     <label className="wide">Strengths<textarea value={draft.strengths??""} onChange={e=>setDraft({...draft,strengths:e.target.value})} placeholder="On-ball defense, transition finishing, rebounding…"/></label>
