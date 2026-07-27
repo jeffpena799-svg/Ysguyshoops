@@ -39,7 +39,7 @@ export default async function handler(request, response) {
     if (request.method === "PUT") {
       if (!isAuthorized(request)) return response.status(401).json({ error: "Commissioner login required" });
       const data = request.body?.data;
-      if (!data || !Array.isArray(data.players) || !Array.isArray(data.games) || !Array.isArray(data.awards) || !Array.isArray(data.seasons) || (data.news !== undefined && !Array.isArray(data.news))) {
+      if (!data || !Array.isArray(data.players) || !Array.isArray(data.games) || !Array.isArray(data.awards) || !Array.isArray(data.seasons) || (data.news !== undefined && !Array.isArray(data.news)) || (data.runs !== undefined && !Array.isArray(data.runs))) {
         return response.status(400).json({ error: "Invalid league data" });
       }
       const serialized = JSON.stringify(data);
