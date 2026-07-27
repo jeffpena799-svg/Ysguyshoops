@@ -1,4 +1,4 @@
-# Y’s Guys League Universe v4.5
+# Y’s Guys League Universe v4.6
 
 The shared, mobile-first home of Y’s Guys basketball.
 
@@ -144,3 +144,12 @@ Required Vercel environment variables:
 - One-tap PNG downloads generated from current league data
 - Commissioner-set player overall ratings with automatic-rating fallback
 - Editable career totals, personal awards, and official Awards Center records
+
+## v4.6 — History Editor
+
+- Clearly labeled Add / Edit Players workflow in Commissioner Mode
+- Manual historical milestones with exact dates and categories
+- Optional photos for archival moments
+- Edit and delete controls for manual history
+- Manual entries merged chronologically with games, awards, news, and Sundays
+- Backward-compatible history migration and cloud restore protection
