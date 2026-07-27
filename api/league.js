@@ -39,11 +39,11 @@ export default async function handler(request, response) {
     if (request.method === "PUT") {
       if (!isAuthorized(request)) return response.status(401).json({ error: "Commissioner login required" });
       const data = request.body?.data;
-      if (!data || !Array.isArray(data.players) || !Array.isArray(data.games) || !Array.isArray(data.awards) || !Array.isArray(data.seasons)) {
+      if (!data || !Array.isArray(data.players) || !Array.isArray(data.games) || !Array.isArray(data.awards) || !Array.isArray(data.seasons) || (data.news !== undefined && !Array.isArray(data.news))) {
         return response.status(400).json({ error: "Invalid league data" });
       }
       const serialized = JSON.stringify(data);
-      if (serialized.length > 2_000_000) return response.status(413).json({ error: "League data is too large" });
+      if (serialized.length > 4_000_000) return response.status(413).json({ error: "League data is too large" });
       const rows = await sql`
         INSERT INTO league_state (id, data, revision, updated_at)
         VALUES (1, ${sql.json(data)}, 1, NOW())
