@@ -16,6 +16,6 @@ export default function handler(_request, response) {
   response.status(ready ? 200 : 503).json({
     status: ready ? "ready" : "configuration-required",
     configured,
-    version: "4.7-universe-polish",
+    version: "4.8-hall-formula-v1",
   });
 }
