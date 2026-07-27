@@ -1,4 +1,4 @@
-# Y’s Guys League Universe v2.9
+# Y’s Guys League Universe v3.0
 
 The shared, mobile-first home of Y’s Guys basketball.
 
@@ -75,3 +75,12 @@ Required Vercel environment variables:
 - Month-by-month league calendar
 - Official digital Rule Book
 - Expanded universe navigation
+
+## v3.0 — Player Depth
+
+- Head-to-head player comparison
+- Automatic player archetypes
+- Gold, Silver, and Bronze achievement badges
+- Full-roster Legacy Tracker
+- Hall of Fame progress bars
+- Expanded 2K-style player identity
