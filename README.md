@@ -1,4 +1,4 @@
-# Y’s Guys League Universe v4.1
+# Y’s Guys League Universe v4.5
 
 The shared, mobile-first home of Y’s Guys basketball.
 
@@ -116,3 +116,29 @@ Required Vercel environment variables:
 - Home dashboard attendance banner
 - Sunday-aware league calendar
 - Every attendance update creates a cloud revision
+
+## v4.2 — Player Intelligence
+
+- Career highs derived from official box scores
+- Live player averages, win percentage, recorded games, and win streaks
+- Expanded historical analytics inside the Record Book
+
+## v4.3 — League Timeline
+
+- Unified chronological history of games, awards, news, and Sunday attendance
+- Filterable history categories
+- Automatic timeline updates as the league grows
+
+## v4.4 — Voting Center
+
+- Commissioner-created MVP, award, and community polls
+- Public one-player/one-vote ballots without accounts or PINs
+- Changeable votes while a poll remains open
+- Closed-poll results with totals and percentages
+- Voting changes protected by cloud revision history
+
+## v4.5 — Share Studio
+
+- Live Instagram-ready 4:5 graphics
+- League leader, latest result, Sunday turnout, and featured-news templates
+- One-tap PNG downloads generated from current league data
