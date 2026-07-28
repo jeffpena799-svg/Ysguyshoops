@@ -9,6 +9,7 @@ type Player = {
   wins: number; losses: number; pts: number; reb: number; ast: number; turnovers: number;
   awards: string[]; bio: string; jerseyNumber?:string; height?:string; strengths?:string;
   signatureBadge?:string; photoUrl?:string; bannerColor?:string; overallOverride?:number;
+  defenseRating?:number; formulaOverall?:number;
 };
 
 type StatLine = { playerId:string; team:string; pts:number; reb:number; ast:number; turnovers:number };
@@ -199,8 +200,55 @@ function hallResume(player:Player,awards:Award[]){
   const total=milestonePoints+awardPoints;
   return {total,milestonePoints,awardPoints,milestones,officialAwards,status:hallStatus(total)};
 }
-function calculatedOverall(p:Player){ return Math.min(99,Math.round(60+avg(p.pts,p)*1.4+avg(p.reb,p)+avg(p.ast,p)*1.2+pct(p)*.08)); }
-function overallRating(p:Player){ return typeof p.overallOverride==="number"?Math.max(40,Math.min(99,Math.round(p.overallOverride))):calculatedOverall(p); }
+function percentile(value:number,values:number[],lowerIsBetter=false){
+  if(values.length<2)return 50;
+  const below=values.filter(item=>lowerIsBetter?item>value:item<value).length;
+  const equal=values.filter(item=>item===value).length;
+  return 100*(below+(equal-1)/2)/(values.length-1);
+}
+function formulaImpact(p:Player,roster:Player[]){
+  const eligible=roster.filter(player=>gp(player)>=5);
+  if(gp(p)<5||!eligible.some(player=>player.id===p.id))return null;
+  const scoring=percentile(avg(p.pts,p),eligible.map(player=>avg(player.pts,player)));
+  const rebounding=percentile(avg(p.reb,p),eligible.map(player=>avg(player.reb,player)));
+  const playmaking=percentile(avg(p.ast,p),eligible.map(player=>avg(player.ast,player)));
+  const ballSecurity=percentile(avg(p.turnovers,p),eligible.map(player=>avg(player.turnovers,player)),true);
+  const defense=Math.max(0,Math.min(100,p.defenseRating??50));
+  return scoring*.25+rebounding*.25+playmaking*.25+defense*.20+ballSecurity*.05;
+}
+function recentFormRoster(roster:Player[],games:Game[]){
+  const recent=[...games].filter(game=>game.status==="final"&&game.boxScore?.length).slice(-5);
+  if(!recent.length)return [];
+  return roster.map(player=>{
+    const lines=recent.flatMap(game=>game.boxScore?.filter(line=>line.playerId===player.id)??[]);
+    if(!lines.length)return null;
+    return {...player,wins:lines.length,losses:0,pts:lines.reduce((sum,line)=>sum+line.pts,0),reb:lines.reduce((sum,line)=>sum+line.reb,0),ast:lines.reduce((sum,line)=>sum+line.ast,0),turnovers:lines.reduce((sum,line)=>sum+line.turnovers,0)};
+  }).filter((player):player is Player=>Boolean(player));
+}
+function calculatedOverall(p:Player,roster:Player[],games:Game[]=[]){
+  const seasonImpact=formulaImpact(p,roster);
+  if(seasonImpact===null)return null;
+  const formRoster=recentFormRoster(roster,games);
+  const formPlayer=formRoster.find(player=>player.id===p.id);
+  const formImpact=formPlayer&&formRoster.length>=2?formulaImpact(formPlayer,formRoster):null;
+  const impact=formImpact===null?seasonImpact:seasonImpact*.7+formImpact*.3;
+  return impact===null?null:Math.max(70,Math.min(95,Math.round(70+impact*.25)));
+}
+function overallRating(p:Player,roster:Player[],games:Game[]=[]){
+  if(typeof p.overallOverride==="number")return Math.max(40,Math.min(99,Math.round(p.overallOverride)));
+  if(typeof p.formulaOverall==="number")return Math.max(70,Math.min(95,Math.round(p.formulaOverall)));
+  return calculatedOverall(p,roster,games);
+}
+function applyOverallMovement(previous:Player[],next:Player[],games:Game[]=[]){
+  return next.map(player=>{
+    const prior=previous.find(item=>item.id===player.id);
+    const raw=calculatedOverall(player,next,games);
+    if(raw===null)return {...player,formulaOverall:undefined};
+    const before=prior?overallRating(prior,previous):null;
+    if(before===null)return {...player,formulaOverall:raw};
+    return {...player,formulaOverall:Math.max(before-2,Math.min(before+2,raw))};
+  });
+}
 function archetype(p:Player){
   const stats=[["Scoring Threat",avg(p.pts,p)],["Glass Cleaner",avg(p.reb,p)],["Floor General",avg(p.ast,p)*1.7],["Winning Connector",pct(p)/12]] as const;
   return [...stats].sort((a,b)=>b[1]-a[1])[0][0];
@@ -224,7 +272,7 @@ function loadData<T>(key:string,fallback:T):T {
   }
 }
 function exportData(data:LeagueData){
-  const blob=new Blob([JSON.stringify({...data,exportedAt:new Date().toISOString(),version:"4.9.0"},null,2)],{type:"application/json"});
+  const blob=new Blob([JSON.stringify({...data,exportedAt:new Date().toISOString(),version:"5.0.0"},null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
   const link=document.createElement("a");
   link.href=url;link.download=`ys-guys-backup-${new Date().toISOString().slice(0,10)}.json`;link.click();
@@ -382,6 +430,12 @@ export default function App(){
     const result=await response.json();setSubmissions(result.submissions);localStorage.setItem("yg-submissions",JSON.stringify(result.submissions));
     setCloudUpdatedAt(result.updatedAt);setCloudStatus("cloud");setToast(item.type==="profile-photo"?"Photo sent for Commissioner approval":"Suggestion sent to the Commissioner");setTimeout(()=>setToast(""),2400);
   };
+  const updateOwnPosition=async(playerId:string,position:string)=>{
+    const response=await fetch("/api/player-profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({playerId,position})});
+    if(!response.ok){const result=await response.json().catch(()=>({}));throw new Error(result.error||"Position could not be saved");}
+    const result=await response.json();setPlayers(result.players);localStorage.setItem("yg-players",JSON.stringify(result.players));
+    setSelected(result.players.find((player:Player)=>player.id===playerId)??null);setCloudUpdatedAt(result.updatedAt);setCloudStatus("cloud");setToast("Position updated everywhere");setTimeout(()=>setToast(""),2000);
+  };
 
   useEffect(()=>{
     const controller=new AbortController();
@@ -397,7 +451,7 @@ export default function App(){
 
   return <div className="app"><style>{styles}</style>
     <header className="topbar">
-      <button className="brand" onClick={()=>go("home")}><img className="brandMark" src={branding.logoUrl||initialBranding.logoUrl} alt=""/><span><b>{branding.wordmark}</b><small>{branding.tagline} · v4.9</small></span></button>
+      <button className="brand" onClick={()=>go("home")}><img className="brandMark" src={branding.logoUrl||initialBranding.logoUrl} alt=""/><span><b>{branding.wordmark}</b><small>{branding.tagline} · v5.0</small></span></button>
       <div className="headerActions"><button className="myPlayerPill" onClick={()=>setShowMyPlayerPicker(true)}>{myPlayer?<>{myPlayer.photoUrl?<img className="avatar photoAvatar" src={myPlayer.photoUrl} alt=""/>:<span className="avatar">{initials(myPlayer.name)}</span>}<b>{myPlayer.name}</b></>:<>◎ <b>My Player</b></>}</button><button className="seasonPill" onClick={()=>go("hof")}><span className={`syncDot ${cloudStatus}`}/>{cloudStatus==="cloud"?"Shared":"Offline"} · Summer 2026</button></div>
     </header>
 
@@ -409,7 +463,7 @@ export default function App(){
           <img className="heroWatermark" src={branding.logoUrl||initialBranding.logoUrl} alt=""/>
         </section>
         {nextRun&&<QuickRsvp run={nextRun} myPlayer={myPlayer} updatedAt={cloudUpdatedAt} onChoosePlayer={()=>setShowMyPlayerPicker(true)} onSubmit={submitRsvp}/>}
-        {myPlayer&&<button className="myPlayerHome" onClick={()=>openProfile(myPlayer)}>{myPlayer.photoUrl?<img src={myPlayer.photoUrl} alt=""/>:<span>{overallRating(myPlayer)}</span>}<div><small>MY PLAYER</small><h2>{myPlayer.name}</h2><p>{myPlayer.wins}-{myPlayer.losses} · {avg(myPlayer.pts,myPlayer)} PPG · {hallProgress(hallResume(myPlayer,awards).total)}% Hall Progress</p></div><b>Open profile →</b></button>}
+        {myPlayer&&<button className="myPlayerHome" onClick={()=>openProfile(myPlayer)}>{myPlayer.photoUrl?<img src={myPlayer.photoUrl} alt=""/>:<span>{overallRating(myPlayer,players)??"PROV"}</span>}<div><small>MY PLAYER</small><h2>{myPlayer.name}</h2><p>{myPlayer.wins}-{myPlayer.losses} · {avg(myPlayer.pts,myPlayer)} PPG</p></div><b>Open profile →</b></button>}
 
         <div className="twoCol">
           <section className="panel newsPanel"><Section title="League news" eyebrow="HEADLINES" />
@@ -438,10 +492,10 @@ export default function App(){
 
       {view==="players" && <Page eyebrow="PLAYER DIRECTORY" title="The people who built the league." subtitle="Search the roster and open any profile.">
         <input className="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search players or nicknames…" />
-        <div className="playerGrid">{filtered.map(p=><button className="playerCard" key={p.id} onClick={()=>openProfile(p)}><div className="playerCardTop">{p.photoUrl?<img className="playerThumb" src={p.photoUrl} alt={`${p.name} profile`}/>:<span className="playerPhotoPlaceholder">{initials(p.name)}</span>}<span className="bigAvatar">{overallRating(p)}<small>OVR</small></span></div><span className="pos">{p.jerseyNumber?`#${p.jerseyNumber} · `:""}{p.position}</span><h3>{p.name}</h3><small>“{p.nickname}” · {archetype(p)}</small><div className="miniStats"><span><b>{avg(p.pts,p)}</b>PPG</span><span><b>{avg(p.reb,p)}</b>RPG</span><span><b>{avg(p.ast,p)}</b>APG</span></div><div className="record">{p.wins}-{p.losses} · {hallProgress(hallResume(p,awards).total)}% Hall Progress</div></button>)}</div>
+        <div className="playerGrid">{filtered.map(p=><PlayerDirectoryCard key={p.id} player={p} roster={players} isMyPlayer={p.id===myPlayerId} onOpen={()=>openProfile(p)} onPhotoSubmit={submitLeagueItem}/>)}</div>
       </Page>}
 
-      {view==="profile" && selected && <PlayerUniverseProfile player={selected} games={games} officialAwards={awards} rank={players.slice().sort((a,b)=>overallRating(b)-overallRating(a)).findIndex(p=>p.id===selected.id)+1} isMyPlayer={selected.id===myPlayerId} onPhotoSubmit={submitLeagueItem} onBack={()=>go("players")}/>}
+      {view==="profile" && selected && <PlayerUniverseProfile player={selected} roster={players} games={games} officialAwards={awards} rank={players.slice().sort((a,b)=>(overallRating(b,players)??0)-(overallRating(a,players)??0)).findIndex(p=>p.id===selected.id)+1} isMyPlayer={selected.id===myPlayerId} onPhotoSubmit={submitLeagueItem} onPositionChange={updateOwnPosition} onBack={()=>go("players")}/>}
 
       {view==="compare" && <PlayerComparison players={players} awards={awards}/>}
 
@@ -482,7 +536,7 @@ export default function App(){
         {adminTab==='review' && <ReviewCenter submissions={submissions} players={players} onChange={(next,nextPlayers)=>{setSubmissions(next);if(nextPlayers)setPlayers(nextPlayers);saveAll({submissions:next,players:nextPlayers??players});}}/>}
         {adminTab==='rankings' && <PowerRankingManager rankings={rankings} players={players} onChange={(next)=>{setRankings(next);saveAll({rankings:next});}}/>}
         {adminTab==='runs' && <RunManager runs={runs} onChange={(next)=>{setRuns(next);saveAll({runs:next});}} onConvert={(run)=>{if(games.some(game=>game.id===`game-${run.id}`))return alert("A scheduled game already exists for this Sunday.");const game:Game={id:`game-${run.id}`,date:formatRunDate(run.date),startTime:run.startTime,location:run.location,status:"scheduled",title:run.title,teamA:"Side A",scoreA:0,teamB:"Side B",scoreB:0,mvp:"",recap:""};const next=[...games,game];setGames(next);saveAll({games:next});setToast("Sunday added to scheduled games");setTimeout(()=>setToast(""),2000)}}/>}
-        {adminTab==='games' && <GameManager games={games} players={players} onSave={(game,previous)=>{const nextGames=previous?games.map(g=>g.id===game.id?game:g):[...games,game];const nextPlayers=applyBoxScoreDelta(players,previous,game);setGames(nextGames);setPlayers(nextPlayers);saveAll({games:nextGames,players:nextPlayers});}} onDelete={(game)=>{const nextGames=games.filter(g=>g.id!==game.id);const nextPlayers=applyBoxScoreDelta(players,game,undefined);setGames(nextGames);setPlayers(nextPlayers);saveAll({games:nextGames,players:nextPlayers});}}/>}
+        {adminTab==='games' && <GameManager games={games} players={players} onSave={(game,previous)=>{const nextGames=previous?games.map(g=>g.id===game.id?game:g):[...games,game];const nextPlayers=applyOverallMovement(players,applyBoxScoreDelta(players,previous,game),nextGames);setGames(nextGames);setPlayers(nextPlayers);saveAll({games:nextGames,players:nextPlayers});}} onDelete={(game)=>{const nextGames=games.filter(g=>g.id!==game.id);const nextPlayers=applyOverallMovement(players,applyBoxScoreDelta(players,game,undefined),nextGames);setGames(nextGames);setPlayers(nextPlayers);saveAll({games:nextGames,players:nextPlayers});}}/>}
         {adminTab==='players' && <PlayerManager players={players} onChange={(next)=>{setPlayers(next);saveAll({players:next});}}/>}
         {adminTab==='history' && <HistoryManager history={history} onChange={(next)=>{setHistory(next);saveAll({history:next});}}/>}
         {adminTab==='news' && <NewsManager news={news} onChange={(next)=>{setNews(next);saveAll({news:next});}}/>}
@@ -493,7 +547,7 @@ export default function App(){
         </>}
       </Page>}
 
-      {view==="more" && <Page eyebrow="LEAGUE UNIVERSE · v4.9" title="More from Y's Guys" subtitle="A cleaner home for league stories, ideas and history."><div className="menuList"><Menu label="Community News" icon="📰" onClick={()=>go("community")}/><Menu label="Suggestion Box" icon="💡" onClick={()=>go("studio")}/><Menu label="Rule Book" icon="📖" onClick={()=>go("rules")}/><Menu label="League History" icon="🗓️" onClick={()=>go("timeline")}/><Menu label="Sunday MVP Voting" icon="🗳️" onClick={()=>go("voting")}/><Menu label="Share League" icon="↗️" onClick={shareLeague}/><Menu label="Commissioner Mode" icon="🔒" onClick={()=>go("commissioner")}/></div></Page>}
+      {view==="more" && <Page eyebrow="LEAGUE UNIVERSE · v5.0" title="More from Y's Guys" subtitle="A cleaner home for league stories, ideas and history."><div className="menuList"><Menu label="Community News" icon="📰" onClick={()=>go("community")}/><Menu label="Suggestion Box" icon="💡" onClick={()=>go("studio")}/><Menu label="Rule Book" icon="📖" onClick={()=>go("rules")}/><Menu label="League History" icon="🗓️" onClick={()=>go("timeline")}/><Menu label="Sunday MVP Voting" icon="🗳️" onClick={()=>go("voting")}/><Menu label="Share League" icon="↗️" onClick={shareLeague}/><Menu label="Commissioner Mode" icon="🔒" onClick={()=>go("commissioner")}/></div></Page>}
     </main>
 
     {toast && <div className="toast">✓ {toast}</div>}
@@ -534,17 +588,31 @@ function HallHub({players,awards,seasons,records,updatedAt,onOpen}:{players:Play
   </Page>;
 }
 
-function PlayerUniverseProfile({player,games,officialAwards,rank,isMyPlayer,onPhotoSubmit,onBack}:{player:Player;games:Game[];officialAwards:Award[];rank:number;isMyPlayer:boolean;onPhotoSubmit:(item:{type:"profile-photo"|"suggestion";playerId:string;message:string;imageUrl?:string})=>Promise<void>;onBack:()=>void}){
+function PlayerDirectoryCard({player,roster,isMyPlayer,onOpen,onPhotoSubmit}:{player:Player;roster:Player[];isMyPlayer:boolean;onOpen:()=>void;onPhotoSubmit:(item:{type:"profile-photo"|"suggestion";playerId:string;message:string;imageUrl?:string})=>Promise<void>}){
+  const [busy,setBusy]=useState(false);const [error,setError]=useState("");
+  const choose=async(file?:File)=>{if(!file)return;setBusy(true);setError("");try{const imageUrl=await compressImage(file);await onPhotoSubmit({type:"profile-photo",playerId:player.id,message:`Profile photo request for ${player.name}`,imageUrl})}catch(reason){setError(reason instanceof Error?reason.message:"Photo could not be submitted")}finally{setBusy(false)}};
+  const rating=overallRating(player,roster);
+  return <article className="playerCard"><button className="playerCardOpen" onClick={onOpen}><div className="playerCardTop">{player.photoUrl?<img className="playerThumb" src={player.photoUrl} alt={`${player.name} profile`}/>:<span className="playerPhotoPlaceholder">{isMyPlayer?<><b>＋</b><small>Add Photo</small></>:initials(player.name)}</span>}<span className="bigAvatar">{rating??"PROV"}<small>{rating===null?"":"OVR"}</small></span></div><span className="pos">{player.jerseyNumber?`#${player.jerseyNumber} · `:""}{player.position}</span><h3>{player.name}</h3><small>“{player.nickname}” · {archetype(player)}</small><div className="miniStats"><span><b>{avg(player.pts,player)}</b>PPG</span><span><b>{avg(player.reb,player)}</b>RPG</span><span><b>{avg(player.ast,player)}</b>APG</span></div><div className="record">{player.wins}-{player.losses}</div></button>{isMyPlayer&&<label className="quickPhotoButton">{busy?"Submitting…":player.photoUrl?"Change Photo":"Add Profile Picture"}<input type="file" accept="image/*" disabled={busy} onChange={event=>{choose(event.target.files?.[0]);event.target.value=""}}/></label>}{error&&<small className="cardError">{error}</small>}</article>;
+}
+
+function PlayerUniverseProfile({player,roster,games,officialAwards,rank,isMyPlayer,onPhotoSubmit,onPositionChange,onBack}:{player:Player;roster:Player[];games:Game[];officialAwards:Award[];rank:number;isMyPlayer:boolean;onPhotoSubmit:(item:{type:"profile-photo"|"suggestion";playerId:string;message:string;imageUrl?:string})=>Promise<void>;onPositionChange:(playerId:string,position:string)=>Promise<void>;onBack:()=>void}){
   const honors=[...new Set([...player.awards,...officialAwards.filter(a=>a.winner.toLowerCase()===player.name.toLowerCase()).map(a=>`${a.season} ${a.name}`)])];
   const logs=games.filter(game=>game.boxScore?.some(line=>line.playerId===player.id)).map(game=>({game,line:game.boxScore!.find(line=>line.playerId===player.id)!}));
-  const rating=overallRating(player),resume=hallResume(player,officialAwards),progress=hallProgress(resume.total);
-  return <><button className="backButton" onClick={onBack}>← All profiles</button><section className="universeHero" style={player.bannerColor?{background:`linear-gradient(135deg,#071c3e,${player.bannerColor})`}:undefined}>{player.photoUrl?<div className="profilePhotoWrap"><img src={player.photoUrl} alt={`${player.name} profile`}/><b>{rating} OVR</b></div>:<div className="ratingOrb"><strong>{rating}</strong><small>OVR</small></div>}<div className="universeIdentity"><span>{player.jerseyNumber?`#${player.jerseyNumber} · `:""}{player.position}{player.height?` · ${player.height}`:""} · {archetype(player)}</span><h1>{player.name}</h1><p>“{player.nickname}”</p><div className="profileTags"><b>#{rank} OVERALL</b><b>{player.wins}-{player.losses} RECORD</b><b>{pct(player)}% WIN</b>{player.overallOverride!==undefined&&<b>COMMISSIONER OVR</b>}{player.signatureBadge&&<b>⭐ {player.signatureBadge}</b>}</div></div><div className="legacyMeter"><div><strong>{progress}%</strong><small>HALL PROGRESS</small></div><span><i style={{width:`${progress}%`}}/></span><p>{resume.status}{progress<100?` · ${100-progress}% remaining`:" · Eligible for induction"}</p></div></section>
+  const rating=overallRating(player,roster,games);
+  return <><button className="backButton" onClick={onBack}>← All profiles</button><section className="universeHero profileHeroClean" style={player.bannerColor?{background:`linear-gradient(135deg,#071c3e,${player.bannerColor})`}:undefined}>{player.photoUrl?<div className="profilePhotoWrap"><img src={player.photoUrl} alt={`${player.name} profile`}/><b>{rating??"PROV"}{rating===null?"":" OVR"}</b></div>:<div className="ratingOrb"><strong>{rating??"PROV"}</strong><small>{rating===null?"RATING":"OVR"}</small></div>}<div className="universeIdentity"><span>{player.jerseyNumber?`#${player.jerseyNumber} · `:""}{player.position}{player.height?` · ${player.height}`:""} · {archetype(player)}</span><h1>{player.name}</h1><p>“{player.nickname}”</p><div className="profileTags"><b>#{rank} OVERALL</b><b>{player.wins}-{player.losses} RECORD</b><b>{pct(player)}% WIN</b>{player.overallOverride!==undefined&&<b>COMMISSIONER OVR</b>}{player.signatureBadge&&<b>⭐ {player.signatureBadge}</b>}</div></div></section>
   <div className="profileUniverseGrid"><section className="profilePanel"><Section eyebrow="PLAYER DNA" title="Attribute overview"/>{[["Scoring",Math.min(99,Math.round(60+avg(player.pts,player)*4))],["Rebounding",Math.min(99,Math.round(60+avg(player.reb,player)*4))],["Playmaking",Math.min(99,Math.round(60+avg(player.ast,player)*6))],["Winning",Math.min(99,Math.round(55+pct(player)*.44))]].map(([label,value])=><div className="attributeRow" key={label}><b>{label}</b><span><i style={{width:`${value}%`}}/></span><strong>{value}</strong></div>)}<p className="bio">{player.bio}</p></section>
   <section className="profilePanel"><Section eyebrow="TROPHY CASE" title="Awards & honors"/>{honors.length?honors.map(honor=><div className="profileHonor" key={honor}><span>🏆</span><b>{honor}</b></div>):<div className="empty">No official honors recorded yet.</div>}{player.strengths&&<><h4>Signature strengths</h4><p className="bio">{player.strengths}</p></>}</section></div>
-  {isMyPlayer&&<PhotoSubmission player={player} onSubmit={onPhotoSubmit}/>}
+  {isMyPlayer&&<><PositionEditor player={player} onChange={onPositionChange}/><PhotoSubmission player={player} onSubmit={onPhotoSubmit}/></>}
   <section className="profilePanel badgePanel"><Section eyebrow="" title="Player badges"/><div className="badgeGrid">{playerBadges(player).map(badge=><article className={`playerBadge ${badge.level.toLowerCase()}`} key={badge.name}><span>{badge.icon}</span><div><b>{badge.name}</b><small>{badge.level} badge</small></div></article>)}</div></section>
-  <section className="profilePanel hallResumePanel"><Section eyebrow="FORMULA V1 · 100% TO QUALIFY" title="Hall of Fame résumé"/><div className="hallSummary"><span><b>{resume.milestonePoints}</b>Milestone points</span><span><b>{resume.awardPoints}</b>Award points</span><span><b>{progress}%</b>Hall Progress</span></div>{resume.milestones.length?<div className="milestoneBannerGrid">{resume.milestones.map(item=><article className="milestoneBanner" key={`${item.category}-${item.threshold}`}><span>★</span><div><small>{item.category.toUpperCase()}</small><b>{item.banner}</b><em>{item.threshold.toLocaleString()} reached · +{item.hallPoints} Hall Points</em></div></article>)}</div>:<div className="empty">The first career milestone banner is still ahead.</div>}{resume.officialAwards.length>0&&<div className="hallLedger"><h3>Award points</h3>{resume.officialAwards.map((award,index)=><div key={`${award.season}-${award.name}-${index}`}><span>{award.season} · {award.name}</span><b>+{award.hallPoints}</b></div>)}</div>}</section>
   <section className="profilePanel profileGameLog"><Section eyebrow="CAREER LOG" title="Recorded box scores"/>{logs.length?<><div className="logHead"><b>Game</b><span>PTS</span><span>REB</span><span>AST</span><span>TO</span></div>{logs.map(({game,line})=><div className="logRow" key={game.id}><div><b>{game.title}</b><small>{game.date} · {line.team}</small></div><span>{line.pts}</span><span>{line.reb}</span><span>{line.ast}</span><span>{line.turnovers}</span></div>)}</>:<div className="empty">Future Game Day box scores will appear here automatically.</div>}</section></>;
+}
+
+const PLAYER_POSITIONS=["PG","SG","SF","PF","C","G","F","G/F","F/C"];
+function PositionEditor({player,onChange}:{player:Player;onChange:(playerId:string,position:string)=>Promise<void>}){
+  const [position,setPosition]=useState(player.position);const [busy,setBusy]=useState(false);const [error,setError]=useState("");
+  useEffect(()=>setPosition(player.position),[player.position]);
+  const save=async()=>{setBusy(true);setError("");try{await onChange(player.id,position)}catch(reason){setError(reason instanceof Error?reason.message:"Position could not be saved")}finally{setBusy(false)}};
+  return <section className="profilePanel positionEditor"><Section eyebrow="MY PLAYER" title="Update position"/><p>Choose the position that best fits your game. This updates immediately.</p><div><select aria-label="Player position" value={position} onChange={event=>setPosition(event.target.value)}>{PLAYER_POSITIONS.map(item=><option value={item} key={item}>{item}</option>)}</select><button className="primary" disabled={busy||position===player.position} onClick={save}>{busy?"Saving…":"Save position"}</button></div>{error&&<p className="formError">{error}</p>}</section>;
 }
 
 function PlayerComparison({players,awards}:{players:Player[];awards:Award[]}){
@@ -552,15 +620,14 @@ function PlayerComparison({players,awards}:{players:Player[];awards:Award[]}){
   const [rightId,setRightId]=useState(players[1]?.id??players[0]?.id??"");
   const left=players.find(p=>p.id===leftId)??players[0],right=players.find(p=>p.id===rightId)??players[1]??players[0];
   const rows=[
-    ["Overall",overallRating(left),overallRating(right)],
-    ["Hall Progress",hallProgress(hallResume(left,awards).total),hallProgress(hallResume(right,awards).total)],
+    ["Overall",overallRating(left,players)??0,overallRating(right,players)??0],
     ["Win %",pct(left),pct(right)],
     ["PPG",avg(left.pts,left),avg(right.pts,right)],
     ["RPG",avg(left.reb,left),avg(right.reb,right)],
     ["APG",avg(left.ast,left),avg(right.ast,right)],
     ["Awards",left.awards.length,right.awards.length],
   ] as const;
-  return <Page eyebrow="COLLECTOR SERIES · v4.9" title="Compare player cards." subtitle="Flip each card for official awards, career totals, banners and Hall Progress."><div className="compareSelectors"><label>Player one<select value={leftId} onChange={e=>setLeftId(e.target.value)}>{players.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label><span>VS</span><label>Player two<select value={rightId} onChange={e=>setRightId(e.target.value)}>{players.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label></div><section className="compareHero"><CompareIdentity player={left} awards={awards}/><div className="versus">VS</div><CompareIdentity player={right} awards={awards}/></section><section className="comparisonTable"><div className="comparisonHead"><b>{left.name}</b><span>CATEGORY</span><b>{right.name}</b></div>{rows.map(([label,a,b])=><div className="comparisonRow" key={label}><strong className={a>b?"winner":""}>{a}{label==="Win %"||label==="Hall Progress"?"%":""}</strong><span>{label}</span><strong className={b>a?"winner":""}>{b}{label==="Win %"||label==="Hall Progress"?"%":""}</strong></div>)}</section></Page>;
+  return <Page eyebrow="COLLECTOR SERIES · v5.0" title="Compare player cards." subtitle="Flip each card for official awards, career totals and milestone banners."><div className="compareSelectors"><label>Player one<select value={leftId} onChange={e=>setLeftId(e.target.value)}>{players.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label><span>VS</span><label>Player two<select value={rightId} onChange={e=>setRightId(e.target.value)}>{players.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label></div><section className="compareHero"><CompareIdentity player={left} roster={players} awards={awards}/><div className="versus">VS</div><CompareIdentity player={right} roster={players} awards={awards}/></section><section className="comparisonTable"><div className="comparisonHead"><b>{left.name}</b><span>CATEGORY</span><b>{right.name}</b></div>{rows.map(([label,a,b])=><div className="comparisonRow" key={label}><strong className={a>b?"winner":""}>{a}{label==="Win %"?"%":""}</strong><span>{label}</span><strong className={b>a?"winner":""}>{b}{label==="Win %"?"%":""}</strong></div>)}</section></Page>;
 }
 
 function PhotoSubmission({player,onSubmit}:{player:Player;onSubmit:(item:{type:"profile-photo"|"suggestion";playerId:string;message:string;imageUrl?:string})=>Promise<void>}){
@@ -592,9 +659,10 @@ function PowerRankingManager({rankings,players,onChange}:{rankings:PowerRankingS
   return <section className="adminCard"><Section eyebrow="WEEKLY PUBLISHER" title="Power Rankings"/><div className="formGrid"><label>Week<input type="number" value={week} onChange={event=>setWeek(Number(event.target.value))}/></label><label>Ranking date<input type="date" value={date} onChange={event=>setDate(event.target.value)}/></label></div><div className="rankingEditor">{entries.map((entry,index)=><article key={entry.playerId}><strong>{entry.dnp?"DNP":index+1}</strong><span><b>{entry.playerName}</b><textarea value={entry.reason} onChange={event=>patch(index,{reason:event.target.value})} placeholder="Why this ranking?"/></span><label><input type="checkbox" checked={entry.dnp} onChange={event=>patch(index,{dnp:event.target.checked})}/> DNP</label><div><button disabled={index===0} onClick={()=>move(index,-1)}>↑</button><button disabled={index===entries.length-1} onClick={()=>move(index,1)}>↓</button></div></article>)}</div><button className="primary" onClick={publish}>Publish Week {week} rankings</button></section>;
 }
 
-function CompareIdentity({player,awards}:{player:Player;awards:Award[]}){
+function CompareIdentity({player,roster,awards}:{player:Player;roster:Player[];awards:Award[]}){
   const [flipped,setFlipped]=useState(false);const resume=hallResume(player,awards);const honors=awards.filter(award=>award.winner.toLowerCase()===player.name.toLowerCase());
-  return <button className={`tradingCard ${flipped?"flipped":""}`} onClick={()=>setFlipped(value=>!value)} aria-label={`Flip ${player.name} player card`}><span className="cardCorner">YG · {player.jerseyNumber?`#${player.jerseyNumber}`:player.position}</span>{!flipped?<><div className="cardPortrait">{player.photoUrl?<img src={player.photoUrl} alt=""/>:<span>{initials(player.name)}</span>}<strong>{overallRating(player)}<small>OVR</small></strong></div><div className="cardName"><small>{player.position} · {archetype(player)}</small><h2>{player.name}</h2><p>“{player.nickname}”</p></div><div className="miniBadgeRow">{playerBadges(player).slice(0,3).map(badge=><i title={badge.name} key={badge.name}>{badge.icon}</i>)}</div></>:<div className="cardBack"><small>OFFICIAL CAREER CARD</small><h2>{player.name}</h2><div className="cardTotals"><span><b>{player.pts}</b>PTS</span><span><b>{player.reb}</b>REB</span><span><b>{player.ast}</b>AST</span><span><b>{player.wins}</b>WINS</span></div><h3>Accomplishments</h3>{honors.length?honors.map(honor=><p className="majorHonor" key={`${honor.season}-${honor.name}`}>★ {honor.season} {honor.name}</p>):<p>No official awards yet.</p>}<p>{resume.milestones.length} milestone banners</p><strong>{hallProgress(resume.total)}% Hall Progress</strong></div>}<span className="flipHint">Tap to {flipped?"see front":"flip"}</span></button>;
+  const rating=overallRating(player,roster);
+  return <button className={`tradingCard ${flipped?"flipped":""}`} onClick={()=>setFlipped(value=>!value)} aria-label={`Flip ${player.name} player card`}><span className="cardCorner">YG · {player.jerseyNumber?`#${player.jerseyNumber}`:player.position}</span>{!flipped?<><div className="cardPortrait">{player.photoUrl?<img src={player.photoUrl} alt=""/>:<span>{initials(player.name)}</span>}<strong>{rating??"PROV"}<small>{rating===null?"":"OVR"}</small></strong></div><div className="cardName"><small>{player.position} · {archetype(player)}</small><h2>{player.name}</h2><p>“{player.nickname}”</p></div><div className="miniBadgeRow">{playerBadges(player).slice(0,3).map(badge=><i title={badge.name} key={badge.name}>{badge.icon}</i>)}</div></>:<div className="cardBack"><small>OFFICIAL CAREER CARD</small><h2>{player.name}</h2><div className="cardTotals"><span><b>{player.pts}</b>PTS</span><span><b>{player.reb}</b>REB</span><span><b>{player.ast}</b>AST</span><span><b>{player.wins}</b>WINS</span></div><h3>Accomplishments</h3>{honors.length?honors.map(honor=><p className="majorHonor" key={`${honor.season}-${honor.name}`}>★ {honor.season} {honor.name}</p>):<p>No official awards yet.</p>}<p>{resume.milestones.length} milestone banners</p><strong>{player.wins}-{player.losses} career record</strong></div>}<span className="flipHint">Tap to {flipped?"see front":"flip"}</span></button>;
 }
 
 function PlayerAnalytics({players,games}:{players:Player[];games:Game[]}){
@@ -603,7 +671,7 @@ function PlayerAnalytics({players,games}:{players:Player[];games:Game[]}){
     const high=(key:keyof Pick<StatLine,"pts"|"reb"|"ast">)=>logs.length?Math.max(...logs.map(log=>log.line[key])):0;
     let streak=0;for(const log of [...logs].reverse()){const winner=log.game.scoreA>log.game.scoreB?log.game.teamA:log.game.teamB;if(log.line.team===winner)streak++;else break;}
     return {player,logs:logs.length,points:high("pts"),rebounds:high("reb"),assists:high("ast"),streak};
-  }).sort((a,b)=>b.points-a.points||overallRating(b.player)-overallRating(a.player));
+  }).sort((a,b)=>b.points-a.points||(overallRating(b.player,players)??0)-(overallRating(a.player,players)??0));
   return <><Section eyebrow="PLAYER INTELLIGENCE" title="Career highs & current form"/><section className="analyticsTable"><div className="analyticsHead"><b>Player</b><span>GP</span><span>PTS High</span><span>REB High</span><span>AST High</span><span>Win Streak</span></div>{rows.map(row=><div className="analyticsRow" key={row.player.id}><b>{row.player.name}<small>{avg(row.player.pts,row.player)} PPG · {pct(row.player)}% wins</small></b><span>{row.logs}</span><strong>{row.points||"—"}</strong><strong>{row.rebounds||"—"}</strong><strong>{row.assists||"—"}</strong><span>{row.streak?`${row.streak} W`:"—"}</span></div>)}</section><p className="analyticsNote">Career highs and streaks use recorded player box scores. Add box scores to older games to complete the historical picture.</p></>;
 }
 
@@ -680,14 +748,13 @@ function CalendarView({games,runs}:{games:Game[];runs:SundayRun[]}){
 
 function RuleBook(){
   const sections=[
-    {icon:"🏀",title:"Game Format",rules:["Sides are organized fresh for competitive, balanced Sunday runs.","Official scores and results are published through Commissioner Mode.","A scheduled game does not affect career records until marked Final."]},
-    {icon:"🔥",title:"Heat Check",rules:["The league may use the Heat Check bonus when announced before play.","A successful Heat Check is worth one additional point.","The rule must be applied consistently to both teams."]},
-    {icon:"🗳️",title:"Voting & Awards",rules:["Players vote for weekly or seasonal MVP recognition.","Award votes should reflect performance, winning and sportsmanship.","The commissioner records official winners in the Awards Center."]},
-    {icon:"🤝",title:"League Conduct",rules:["Compete hard while respecting teammates, opponents and the facility.","Settle disputed calls quickly and keep the game moving.","Dangerous or repeated unsportsmanlike play can lead to removal from a run."]},
-    {icon:"📊",title:"Statistics",rules:["Only final games count toward player career totals.","Each player may have one official box-score line per game.","Editing or deleting a box score automatically reverses its old totals."]},
-    {icon:"⚖️",title:"Commissioner Authority",rules:["The commissioner maintains schedules, results, rosters and corrections.","Major rule changes should be announced before they take effect.","Backups should be downloaded before major historical edits."]},
+    {icon:"🏀",title:"Game Format",rules:["Games to 15. Keeps. Ball touches curtain out. Last game to 21."]},
+    {icon:"🛡️",title:"Fouls",rules:["You can’t foul out."]},
+    {icon:"📊",title:"Power Rankings",rules:["ChatGPT calculates the weekly Power Rankings to reduce personal bias."]},
+    {icon:"🏛️",title:"Hall of Fame",rules:["Hall of Fame Formula is calculated by winning, performance, and awards.\nA breakdown will be provided in the app at a later date."]},
+    {icon:"🏆",title:"League Standard",rules:["Have fun win the day!"]},
   ];
-  return <Page eyebrow="OFFICIAL RULE BOOK · v2.9" title="How the Y's Guys universe operates." subtitle="A living foundation for fair competition, accurate history and a better weekly run."><div className="ruleHero"><span>YG</span><div><b>LEAGUE STANDARD</b><h2>Compete. Record. Respect the run.</h2></div></div><div className="rulesGrid">{sections.map((section,index)=><section className="ruleSection" key={section.title}><div><span>{section.icon}</span><small>ARTICLE {index+1}</small></div><h2>{section.title}</h2><ol>{section.rules.map(rule=><li key={rule}>{rule}</li>)}</ol></section>)}</div><div className="note">This digital rule book is the current league reference. Commissioner-controlled rule editing can be added in a future release.</div></Page>;
+  return <Page eyebrow="OFFICIAL RULE BOOK · v5.0" title="How the Y's Guys universe operates." subtitle="The official rules of the Sunday run."><div className="ruleHero"><span>YG</span><div><b>LEAGUE STANDARD</b><h2>Have fun win the day!</h2></div></div><div className="rulesGrid">{sections.map((section,index)=><section className="ruleSection" key={section.title}><div><span>{section.icon}</span><small>ARTICLE {index+1}</small></div><h2>{section.title}</h2><ol start={index+1}>{section.rules.map(rule=><li key={rule}>{rule}</li>)}</ol></section>)}</div></Page>;
 }
 
 function CommissionerDashboard({players,games,runs,news,polls,history,onOpen}:{players:Player[];games:Game[];runs:SundayRun[];news:NewsStory[];polls:LeaguePoll[];history:HistoryEntry[];onOpen:(tab:AdminTab)=>void}){
@@ -782,7 +849,7 @@ function PlayerManager({players,onChange}:{players:Player[];onChange:(players:Pl
     e.preventDefault();
     if(!draft.name.trim()) return alert("Player name is required.");
     if(!editing&&players.some(p=>p.name.toLowerCase()===draft.name.trim().toLowerCase())) return alert("A player with that name already exists.");
-    const clean={...draft,id:draft.id||makeId("player"),name:draft.name.trim(),nickname:draft.nickname.trim(),awards:draft.awards.filter(Boolean)};
+    const clean={...draft,id:draft.id||makeId("player"),name:draft.name.trim(),nickname:draft.nickname.trim(),awards:draft.awards.filter(Boolean),formulaOverall:undefined};
     onChange(editing?players.map(p=>p.id===clean.id?clean:p):[...players,clean]);setDraft(empty);
   };
   const numberField=(label:keyof Pick<Player,"wins"|"losses"|"pts"|"reb"|"ast"|"turnovers">)=><label>{label[0].toUpperCase()+label.slice(1)}<input min="0" type="number" value={draft[label]} onChange={e=>setDraft({...draft,[label]:Number(e.target.value)})}/></label>;
@@ -790,10 +857,11 @@ function PlayerManager({players,onChange}:{players:Player[];onChange:(players:Pl
   return <div className="managerGrid"><form className="adminCard" onSubmit={save}><h2>{editing?"Edit player":"Add a player"}</h2><p>Control the displayed overall, career totals, identity, profile photo and personal awards.</p><div className="formGrid">
     <label>Name<input required value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
     <label>Nickname<input value={draft.nickname} onChange={e=>setDraft({...draft,nickname:e.target.value})}/></label>
-    <label>Position<select value={draft.position} onChange={e=>setDraft({...draft,position:e.target.value})}>{["G","F","C","PG","SG","SF","PF"].map(x=><option key={x}>{x}</option>)}</select></label>
+    <label>Position<select value={draft.position} onChange={e=>setDraft({...draft,position:e.target.value})}>{PLAYER_POSITIONS.map(x=><option key={x}>{x}</option>)}</select></label>
     <label>Jersey number<input value={draft.jerseyNumber??""} onChange={e=>setDraft({...draft,jerseyNumber:e.target.value})} placeholder="23"/></label>
     <label>Height<input value={draft.height??""} onChange={e=>setDraft({...draft,height:e.target.value})} placeholder="6'1&quot;"/></label>
-    <label>Overall rating<input min="40" max="99" type="number" value={draft.overallOverride??""} onChange={e=>setDraft({...draft,overallOverride:e.target.value===""?undefined:Number(e.target.value)})} placeholder={String(calculatedOverall(draft))}/><small>{draft.overallOverride===undefined?`Automatic: ${calculatedOverall(draft)} OVR`:`Commissioner override · automatic would be ${calculatedOverall(draft)}`}</small></label>
+    <label>Overall rating<input min="40" max="99" type="number" value={draft.overallOverride??""} onChange={e=>setDraft({...draft,overallOverride:e.target.value===""?undefined:Number(e.target.value)})} placeholder={String(calculatedOverall(draft,players)??"PROV")}/><small>{draft.overallOverride===undefined?`Automatic: ${calculatedOverall(draft,players)??"PROV"}`:`Commissioner override · automatic would be ${calculatedOverall(draft,players)??"PROV"}`}</small></label>
+    <label>Defense rating<input min="0" max="100" type="number" value={draft.defenseRating??""} onChange={e=>setDraft({...draft,defenseRating:e.target.value===""?undefined:Number(e.target.value)})} placeholder="50"/><small>0–100 · blank uses neutral 50</small></label>
     <label>Signature badge<input value={draft.signatureBadge??""} onChange={e=>setDraft({...draft,signatureBadge:e.target.value})} placeholder="Acrobat Finisher"/></label>
     <label>Banner color<input type="color" value={draft.bannerColor??"#0A2D5E"} onChange={e=>setDraft({...draft,bannerColor:e.target.value})}/></label>
     {numberField("wins")}{numberField("losses")}{numberField("pts")}{numberField("reb")}{numberField("ast")}{numberField("turnovers")}
@@ -908,7 +976,7 @@ function CommissionerLogin({onLogin}:{onLogin:(token:string)=>void}){
 }
 
 function MyPlayerPicker({players,selectedId,onSelect,onClose}:{players:Player[];selectedId:string;onSelect:(id:string)=>void;onClose:()=>void}){
-  return <div className="modalBackdrop" onMouseDown={event=>{if(event.target===event.currentTarget)onClose()}}><section className="myPlayerPicker" role="dialog" aria-modal="true" aria-labelledby="my-player-title"><button className="close" onClick={onClose} aria-label="Close">×</button><span>PERSONALIZE THE UNIVERSE</span><h2 id="my-player-title">Choose My Player</h2><p>This only remembers your selection on this device. It does not create an account or require a PIN.</p><div>{players.map(player=><button className={selectedId===player.id?"selected":""} onClick={()=>onSelect(player.id)} key={player.id}>{player.photoUrl?<img src={player.photoUrl} alt=""/>:<span className="avatar">{initials(player.name)}</span>}<b>{player.name}</b><small>{player.nickname} · {overallRating(player)} OVR</small>{selectedId===player.id&&<strong>✓</strong>}</button>)}</div>{selectedId&&<button className="secondary clearMyPlayer" onClick={()=>onSelect("")}>Clear My Player</button>}</section></div>;
+  return <div className="modalBackdrop" onMouseDown={event=>{if(event.target===event.currentTarget)onClose()}}><section className="myPlayerPicker" role="dialog" aria-modal="true" aria-labelledby="my-player-title"><button className="close" onClick={onClose} aria-label="Close">×</button><span>PERSONALIZE THE UNIVERSE</span><h2 id="my-player-title">Choose My Player</h2><p>This only remembers your selection on this device. It does not create an account or require a PIN.</p><div>{players.map(player=>{const rating=overallRating(player,players);return <button className={selectedId===player.id?"selected":""} onClick={()=>onSelect(player.id)} key={player.id}>{player.photoUrl?<img src={player.photoUrl} alt=""/>:<span className="avatar">{initials(player.name)}</span>}<b>{player.name}</b><small>{player.nickname} · {rating??"PROV"}{rating===null?"":" OVR"}</small>{selectedId===player.id&&<strong>✓</strong>}</button>})}</div>{selectedId&&<button className="secondary clearMyPlayer" onClick={()=>onSelect("")}>Clear My Player</button>}</section></div>;
 }
 
 function ManageList({title,empty,children}:{title:string;empty:string;children:React.ReactNode}){
@@ -938,4 +1006,5 @@ const styles = `
 .photoAvatar{object-fit:cover}.quickRsvp{margin:18px 0;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:22px;border-radius:24px;background:white;border:1px solid #e1e6ed;box-shadow:0 12px 28px rgba(20,40,70,.08)}.quickRsvp span{font-size:10px;letter-spacing:.13em;color:#967224;font-weight:1000}.quickRsvp h2{margin:5px 0}.quickRsvp p{margin:0;color:#718096}.quickChoices{display:flex;gap:8px}.quickChoices button,.choosePlayerLink{border:1px solid #dce3eb;background:#f5f7fa;color:${NAVY};border-radius:12px;padding:12px 14px;font-weight:1000}.quickChoices button.active{background:${NAVY};color:white;border-color:${NAVY}}.choosePlayerLink{grid-column:1/-1}.updatedStamp{display:block;color:#7d8897;margin:-12px 0 14px}.powerList>button{width:100%;display:grid;grid-template-columns:42px 42px minmax(0,1fr) 52px;gap:9px;align-items:center;border:0;border-top:1px solid #e8ecf1;background:none;padding:12px 0;text-align:left;color:${NAVY}}.powerList>button:first-child{border-top:0}.powerList img{width:38px;height:38px;border-radius:11px;object-fit:cover}.powerRank{text-align:center;font-weight:1000}.powerIdentity{display:flex;flex-direction:column}.powerIdentity small{color:#778397;margin-top:3px;line-height:1.35}.moveUp{color:#16833c}.moveDown{color:#c53d37}.moveEven{color:#8993a0}.hallJump{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 24px;position:sticky;top:76px;z-index:4;background:#f5f6f9;padding:8px}.hallJump a{background:white;border:1px solid #dce2ea;color:${NAVY};padding:9px 11px;border-radius:999px;font-size:11px;font-weight:900;text-decoration:none}#hall-progress,#record-book,#banner-hall,#awards-hall,#season-hall{scroll-margin-top:125px;margin-top:26px}.playerCardTop{display:flex;align-items:center;gap:10px;margin-bottom:12px}.playerCardTop .playerThumb,.playerPhotoPlaceholder{width:78px;height:78px;border-radius:20px;object-fit:cover}.playerPhotoPlaceholder{display:grid;place-items:center;background:#edf2f8;font-weight:1000}.playerCardTop .bigAvatar{margin:0;width:72px;height:72px;display:grid;place-items:center;align-content:center}.bigAvatar small{display:block;font-size:8px}.photoSubmit{margin-top:18px}.photoSubmit>p{color:#718096}.photoSubmit>img{width:120px;height:120px;object-fit:cover;border-radius:20px;display:block}.suggestionCard{max-width:720px;background:white;border:1px solid #e1e6ed;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:15px}.suggestionCard label{display:flex;flex-direction:column;gap:7px;font-weight:900}.suggestionCard select,.suggestionCard textarea{border:1px solid #dbe1e9;border-radius:12px;padding:13px;font:inherit}.suggestionCard textarea{min-height:150px;resize:vertical}.suggestionPreview{display:flex;align-items:flex-end;gap:10px}.suggestionPreview img{width:150px;height:120px;object-fit:cover;border-radius:15px}.suggestionPreview button{border:0;background:#fff0f0;color:#a62e2e;padding:9px;border-radius:9px}.privacyNote{color:#718096;font-size:12px}.successNote{padding:13px;border-radius:12px;background:#eaf7ee;color:#23733c;font-weight:900}.reviewItem{display:grid;grid-template-columns:150px 1fr;gap:18px;padding:18px 0;border-top:1px solid #e5e9ef}.reviewItem img{width:150px;height:150px;object-fit:cover;border-radius:18px}.reviewItem h3{margin:5px 0}.reviewItem p{color:#5f6d80}.reviewItem>div>div{display:flex;gap:7px;flex-wrap:wrap}.reviewItem button{margin-top:0}.rankingEditor{margin-top:18px}.rankingEditor article{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:11px 0;border-top:1px solid #e5e9ef}.rankingEditor article>strong{font-size:20px;text-align:center}.rankingEditor article>span{display:flex;flex-direction:column;gap:5px}.rankingEditor textarea{width:100%;min-height:48px;border:1px solid #dbe1e9;border-radius:9px;padding:8px;font:inherit}.rankingEditor article>div{display:flex;gap:4px}.rankingEditor button{border:0;background:#edf2f8;color:${NAVY};border-radius:8px;padding:8px}.tradingCard{position:relative;min-height:470px;border:5px solid #d3ad55;background:linear-gradient(145deg,#fdf7e9,#fff 45%,#e9d39d);color:${NAVY};border-radius:24px;padding:28px 20px 24px;box-shadow:inset 0 0 0 2px ${NAVY},0 16px 34px rgba(25,39,60,.18);text-align:center}.cardCorner{position:absolute;left:15px;top:12px;font-size:9px;font-weight:1000;letter-spacing:.1em}.cardPortrait{height:230px;margin:10px 0 14px;border-radius:18px;overflow:hidden;background:linear-gradient(145deg,${NAVY},#173f69);position:relative;display:grid;place-items:center}.cardPortrait img{width:100%;height:100%;object-fit:cover}.cardPortrait>span{font-size:64px;color:#e9d39d;font-weight:1000}.cardPortrait>strong{position:absolute;right:10px;top:10px;background:${GOLD};padding:10px;border-radius:13px;font-size:28px}.cardPortrait small{display:block;font-size:8px}.cardName small{color:#8c6c25;font-weight:900}.cardName h2{margin:5px 0;font-size:30px}.cardName p{margin:0 0 10px}.flipHint{position:absolute;right:13px;bottom:10px;font-size:9px;font-weight:900}.cardBack{padding-top:30px}.cardBack>small{color:#987425;font-weight:1000}.cardBack h2{font-size:30px}.cardTotals{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.cardTotals span{background:#f1e4c4;border-radius:12px;padding:10px;font-size:9px;font-weight:900}.cardTotals b{display:block;font-size:24px}.cardBack h3{margin:18px 0 7px}.cardBack p{margin:7px}.majorHonor{color:#8d691c;font-weight:1000}.cardBack>strong{display:block;margin-top:18px;background:${NAVY};color:#e9cf87;padding:12px;border-radius:12px}
 @media(max-width:900px){.leaderGrid,.exploreGrid,.playerGrid{grid-template-columns:repeat(2,1fr)}.twoCol,.managerGrid,.profileUniverseGrid,.studioLayout{grid-template-columns:1fr}.commandGrid{grid-template-columns:repeat(2,1fr)}.rsvpGrid{grid-template-columns:1fr}.universeHero{grid-template-columns:auto 1fr}.legacyMeter{grid-column:1/3}.recordGrid,.awardGrid{grid-template-columns:repeat(2,1fr)}.hallGrid{grid-template-columns:repeat(2,1fr)}.badgeGrid{grid-template-columns:repeat(2,1fr)}.statLineEdit{grid-template-columns:1fr 1fr repeat(4,55px) 36px}}
 @media(max-width:640px){.formGrid,.rsvpFields{grid-template-columns:1fr}.formGrid .wide{grid-column:auto}.adminCard{padding:18px}.topbar{height:68px;padding:0 10px}.brand small,.seasonPill{display:none}.myPlayerPill b{display:none}.myPlayerPill{padding:6px}.commissionerStatus{align-items:flex-start;flex-direction:column}.commandHero{align-items:flex-start;flex-direction:column;padding:21px}.commandGrid{grid-template-columns:1fr}.myPlayerPicker>div{grid-template-columns:1fr}.myPlayerHome{align-items:flex-start;flex-wrap:wrap}.myPlayerHome>div{min-width:180px}.pollGrid{grid-template-columns:1fr}.timeline{margin-left:13px;padding-left:22px}.timelineItem.withPhoto{grid-template-columns:1fr}.timelineItem>img{width:100%;height:180px}.timelineIcon{left:-48px;width:40px;height:40px}.nextRunBanner{display:grid;grid-template-columns:1fr auto auto;padding:18px}.nextRunBanner>div:first-child{grid-column:1/-1}.nextRunBanner>b{grid-column:1/-1}.attendanceHero{align-items:flex-start;flex-direction:column;padding:23px}.attendanceTotals{width:100%}.attendanceTotals span{min-width:0;flex:1}.statusChoices{grid-template-columns:1fr}.runManageRow{grid-template-columns:repeat(3,1fr)}.runManageRow>div{grid-column:1/-1}.statLineEdit{grid-template-columns:1fr 1fr repeat(2,1fr) 36px}.statLineEdit label:nth-of-type(3),.statLineEdit label:nth-of-type(4){grid-row:2}.hallGrid,.rulesGrid,.badgeGrid,.communityGrid{grid-template-columns:1fr}.communityStory.featured{grid-column:auto;display:block}.communityStory.featured>img,.communityStory.featured>.storyFallback{height:240px}.newsManageRow{grid-template-columns:40px minmax(0,1fr) auto auto}.newsManageRow>.orderButtons{display:none}.newsManageRow>.deleteLink{grid-column:4}.universeHero{grid-template-columns:1fr;text-align:center;padding:25px}.ratingOrb{margin:auto}.profileTags{justify-content:center}.legacyMeter{grid-column:auto;text-align:left}.attributeRow{grid-template-columns:90px 1fr 30px}.compareSelectors{grid-template-columns:1fr}.compareSelectors>span{padding:0;text-align:center}.compareHero{grid-template-columns:1fr}.versus{padding:2px}.comparisonHead,.comparisonRow{grid-template-columns:1fr 80px 1fr}.calendar{overflow:auto}.weekday,.calendarGrid{min-width:760px}.calendarDay{min-height:110px}.logHead,.logRow{grid-template-columns:minmax(120px,1fr) repeat(4,42px)}main{padding:18px 14px 100px}.hero{grid-template-columns:1fr;padding:26px 22px;border-radius:24px}.hero h1{font-size:39px}.hero p{font-size:15px}.heroScore{display:none}.leaderGrid{grid-template-columns:repeat(2,1fr);gap:10px}.leaderCard{padding:14px}.leaderCard>strong{font-size:25px}.exploreGrid{grid-template-columns:1fr}.gameList,.playerGrid,.recordGrid,.awardGrid,.milestoneBannerGrid{grid-template-columns:1fr}.hallSummary{grid-template-columns:1fr}.pageHead h1{font-size:38px}.profileStats{grid-template-columns:repeat(2,1fr)}.newsRow{grid-template-columns:1fr;gap:3px}.recordHero{align-items:flex-start}.recordHero>span{font-size:40px}.seasonCard{align-items:flex-start;gap:12px}.bottomNav{height:70px}}
+.playerCardOpen{width:100%;padding:0;border:0;background:none;color:inherit;text-align:left}.playerPhotoPlaceholder b{font-size:25px;line-height:1}.playerPhotoPlaceholder small{font-size:9px}.quickPhotoButton{display:block;margin-top:12px;padding:10px 12px;border-radius:11px;background:${NAVY};color:white;text-align:center;font-size:12px;font-weight:900;cursor:pointer}.quickPhotoButton input{display:none}.cardError{display:block;margin-top:8px;color:#a62e2e}.positionEditor{margin-top:18px}.positionEditor>p{color:#718096}.positionEditor>div{display:flex;gap:10px}.positionEditor select{min-width:140px;padding:12px;border:1px solid #dbe1e9;border-radius:12px;background:white;color:${NAVY};font:inherit}.ruleSection li{white-space:pre-line}
 `;
