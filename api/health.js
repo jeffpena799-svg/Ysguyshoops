@@ -16,6 +16,6 @@ export default function handler(_request, response) {
   response.status(ready ? 200 : 503).json({
     status: ready ? "ready" : "configuration-required",
     configured,
-    version: "5.0.0-overall-formula",
+    version: "5.0.1-profile-corrections",
   });
 }
