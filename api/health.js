@@ -16,6 +16,6 @@ export default function handler(_request, response) {
   response.status(ready ? 200 : 503).json({
     status: ready ? "ready" : "configuration-required",
     configured,
-    version: "4.9.0-simplified-universe",
+    version: "5.0.0-overall-formula",
   });
 }
