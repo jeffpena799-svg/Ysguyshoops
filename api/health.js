@@ -16,6 +16,6 @@ export default function handler(_request, response) {
   response.status(ready ? 200 : 503).json({
     status: ready ? "ready" : "configuration-required",
     configured,
-    version: "6.0.0-sunday-sessions",
+    version: "6.1.0-player-card-corrections",
   });
 }
