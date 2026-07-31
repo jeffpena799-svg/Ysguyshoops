@@ -42,6 +42,7 @@ export default async function handler(request, response) {
         ON CONFLICT (endpoint)
         DO UPDATE SET subscription = EXCLUDED.subscription, enabled = TRUE, updated_at = NOW()
       `;
+      console.log("push-subscription-saved", { enabled: true });
       return response.status(200).json({ enabled: true });
     }
 
@@ -50,6 +51,7 @@ export default async function handler(request, response) {
       return response.status(400).json({ error: "Choose a reminder subscription to disable" });
     }
     await sql`DELETE FROM push_subscriptions WHERE endpoint = ${endpoint}`;
+    console.log("push-subscription-removed", { enabled: false });
     return response.status(200).json({ enabled: false });
   } catch (error) {
     console.error("push-subscription-api", error);
