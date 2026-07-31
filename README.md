@@ -1,4 +1,4 @@
-# Y’s Guys League Universe v4.7
+# Y’s Guys League Universe v6.2
 
 The shared, mobile-first home of Y’s Guys basketball.
 
@@ -52,6 +52,12 @@ Required Vercel environment variables:
 - `POSTGRES_URL`
 - `COMMISSIONER_PASSWORD`
 - `SESSION_SECRET`
+- `CRON_SECRET`
+- `VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `VAPID_SUBJECT` (optional; defaults to the Y’s Guys notification email identity)
+
+Generate the VAPID key pair once with `npx web-push generate-vapid-keys --json`, then keep the private key and cron secret only in Vercel environment variables.
 
 ## v2.8 — Game Day
 
@@ -163,3 +169,12 @@ Required Vercel environment variables:
 - Permanent color-team framing removed
 - Navy, Cream, and Gold legacy labels migrated to temporary Side A / Side B
 - Team standings removed while all historical scores and player totals are preserved
+
+## v6.2 — Friday RSVP Reminders
+
+- Opt-in notification control on the Sunday RSVP page
+- Friday 6:00 PM Eastern reminders to choose In, Maybe, or Out
+- Daylight-saving-safe Vercel schedules
+- Push delivery through the installed web app, even when it is closed
+- One-tap return to Y’s Guys from the notification
+- Per-device reminder disable control and automatic stale-subscription cleanup
