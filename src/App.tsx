@@ -304,7 +304,7 @@ function loadData<T>(key:string,fallback:T):T {
   }
 }
 function exportData(data:LeagueData){
-  const blob=new Blob([JSON.stringify({...data,exportedAt:new Date().toISOString(),version:"6.2.0"},null,2)],{type:"application/json"});
+  const blob=new Blob([JSON.stringify({...data,exportedAt:new Date().toISOString(),version:"6.2.1"},null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
   const link=document.createElement("a");
   link.href=url;link.download=`ys-guys-backup-${new Date().toISOString().slice(0,10)}.json`;link.click();
@@ -497,7 +497,7 @@ export default function App(){
 
   return <div className="app"><style>{styles}</style><style>{reminderStyles}</style>
     <header className="topbar">
-      <button className="brand" onClick={()=>go("home")}><img className="brandMark" src={branding.logoUrl||initialBranding.logoUrl} alt=""/><span><b>{branding.wordmark}</b><small>{branding.tagline} · v6.2</small></span></button>
+      <button className="brand" onClick={()=>go("home")}><img className="brandMark" src={branding.logoUrl||initialBranding.logoUrl} alt=""/><span><b>{branding.wordmark}</b><small>{branding.tagline} · v6.2.1</small></span></button>
       <div className="headerActions"><button className="myPlayerPill" onClick={()=>myPlayer?openProfile(myPlayer):setShowMyPlayerPicker(true)}>{myPlayer?<>{myPlayer.photoUrl?<img className="avatar photoAvatar" src={myPlayer.photoUrl} alt=""/>:<span className="avatar">{initials(myPlayer.name)}</span>}<b>{myPlayer.name}</b></>:<>◎ <b>My Player</b></>}</button><button className="seasonPill" onClick={()=>go("hof")}><span className={`syncDot ${cloudStatus}`}/>{cloudStatus==="cloud"?"Shared":"Offline"} · Summer 2026</button></div>
     </header>
 
@@ -525,11 +525,11 @@ export default function App(){
       {view==="voting" && <VotingCenter polls={polls} players={players} defaultPlayerId={myPlayerId} onVote={submitVote}/>}
       {view==="studio" && <SuggestionBox players={players} defaultPlayerId={myPlayerId} onSubmit={submitLeagueItem}/>}
 
-      {view==="community" && <Page eyebrow="THE COMMUNITY · v6.2" title="More than a box score." subtitle="Stories, announcements and moments from around the Y's Guys universe.">
+      {view==="community" && <Page eyebrow="THE COMMUNITY · v6.2.1" title="More than a box score." subtitle="Stories, announcements and moments from around the Y's Guys universe.">
         {publishedNews.length?<div className="communityGrid">{publishedNews.map((story,index)=><article className={index===0?"communityStory featured":"communityStory"} key={story.id}>{story.imageUrl?<img src={story.imageUrl} alt=""/>:<div className="storyFallback">YG</div>}<div><span>{story.category} · {story.date}</span><h2>{story.headline}</h2><p>{story.summary}</p>{story.featured&&<b>FEATURED STORY</b>}</div></article>)}</div>:<div className="communityEmpty"><span>📰</span><h2>The newsroom is ready.</h2><p>The Commissioner can publish the first community story from Commissioner Mode.</p></div>}
       </Page>}
 
-      {view==="games" && <Page eyebrow="GAME DAY · v6.2" title="Schedule and results." subtitle="Upcoming matchups and complete results from the active season.">
+      {view==="games" && <Page eyebrow="GAME DAY · v6.2.1" title="Schedule and results." subtitle="Upcoming matchups and complete results from the active season.">
         {scheduledGames.length>0&&<><Section eyebrow="UP NEXT" title="Upcoming games"/><div className="upcomingList">{scheduledGames.map(g=><article className="upcomingCard" key={g.id}><div><span>{g.date}{g.startTime?` · ${g.startTime}`:""}</span><h3>{g.teamA} <em>vs</em> {g.teamB}</h3><p>{g.title}{g.location?` · ${g.location}`:""}</p></div><b>SCHEDULED</b></article>)}</div></>}
         <Section eyebrow="FINAL SCORES" title="Game history"/>
         <div className="gameList">{finalGames.map((g,i)=><article className="gameCard" key={g.id}><div className="gameTop"><span>{g.date}{g.location?` · ${g.location}`:""}</span><b>{i===finalGames.length-1?"LATEST":"FINAL"}</b></div><h3>{g.title}</h3><div className={g.scoreA<g.scoreB?"scoreLine loser":"scoreLine"}><span>{g.teamA}</span><strong>{g.scoreA}</strong></div><div className={g.scoreB<g.scoreA?"scoreLine loser":"scoreLine"}><span>{g.teamB}</span><strong>{g.scoreB}</strong></div>{g.mvp&&<div className="mvp">⭐ Player of the Game: <b>{g.mvp}</b></div>}<p>{g.recap}</p>{g.boxScore?.length?<details className="boxScorePublic"><summary>Open box score</summary><div className="publicStatHead"><b>Player</b><span>PTS</span><span>REB</span><span>AST</span><span>TO</span></div>{g.boxScore.map(line=><div className="publicStatRow" key={line.playerId}><b>{players.find(p=>p.id===line.playerId)?.name??"Player"}</b><span>{line.pts}</span><span>{line.reb}</span><span>{line.ast}</span><span>{line.turnovers}</span></div>)}</details>:null}</article>)}</div>
@@ -553,7 +553,7 @@ export default function App(){
         <div className="recordHero"><span>🏆</span><div><small>LIVE FEATURED RECORD</small><h2>{winLeader.name} · Best Win Percentage</h2><p>{pct(winLeader)}% across {gp(winLeader)} games</p></div></div>
         <div className="recordGrid">{records.map((r,i)=><article className="recordCard" key={i}><span>{r.category}</span><h3>{r.label}</h3><strong>{r.value}</strong><b>{r.holder}</b><small>{r.date}</small></article>)}</div>
         <PlayerAnalytics players={players} games={games}/>
-        <div className="note">Version 6.2 recalculates this record book whenever shared player or game data changes.</div>
+        <div className="note">Version 6.2.1 recalculates this record book whenever shared player or game data changes.</div>
       </Page>}
 
       {view==="awards" && <Page eyebrow="TROPHY ROOM" title="Awards Center" subtitle="Celebrating the players who shaped each season.">
@@ -571,7 +571,7 @@ export default function App(){
 
       {view==="hof" && <HallHub players={players} awards={awards} seasons={seasons} records={records} updatedAt={cloudUpdatedAt} onOpen={openProfile}/>}
 
-      {view==="commissioner" && <Page eyebrow="COMMISSIONER MODE · v6.2" title="Run the entire league universe." subtitle="Publish games, profiles, photos and community stories for every visitor.">
+      {view==="commissioner" && <Page eyebrow="COMMISSIONER MODE · v6.2.1" title="Run the entire league universe." subtitle="Publish games, profiles, photos and community stories for every visitor.">
         {!sessionToken?<CommissionerLogin onLogin={(token)=>{sessionStorage.setItem("yg-session",token);setSessionToken(token);setCloudStatus("saving");fetch("/api/league",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({data:{players,games,awards,seasons,news,runs,polls,history,branding,rankings,submissions,sundaySessions,statBaseline}})}).then(async response=>{if(!response.ok)throw new Error();const result=await response.json();setCloudUpdatedAt(result.updatedAt);setCloudStatus("cloud");setToast("Commissioner unlocked · league published");}).catch(()=>{setCloudStatus("error");setToast("Unlocked · first cloud save needs retry");}).finally(()=>setTimeout(()=>setToast(""),2400))}}/>:<>
         <div className="commissionerStatus"><div><span className={`syncDot ${cloudStatus}`}/><b>{cloudStatus==="saving"?"Saving…":cloudStatus==="cloud"?"Cloud connected":"Cloud attention needed"}</b><small>{cloudUpdatedAt?`Last cloud update ${new Date(cloudUpdatedAt).toLocaleString()}`:"Ready to create the first shared revision"}</small></div><button onClick={()=>{sessionStorage.removeItem("yg-session");setSessionToken("")}}>Lock Commissioner Mode</button></div>
         <div className="adminTabs">
@@ -593,7 +593,7 @@ export default function App(){
         </>}
       </Page>}
 
-      {view==="more" && <Page eyebrow="LEAGUE UNIVERSE · v6.2" title="More from Y's Guys" subtitle="A cleaner home for league stories, ideas and history."><div className="menuList"><Menu label="Community News" icon="📰" onClick={()=>go("community")}/><Menu label="Suggestion Box" icon="💡" onClick={()=>go("studio")}/><Menu label="Rule Book" icon="📖" onClick={()=>go("rules")}/><Menu label="League History" icon="🗓️" onClick={()=>go("timeline")}/><Menu label="Sunday MVP Voting" icon="🗳️" onClick={()=>go("voting")}/><Menu label="Share League" icon="↗️" onClick={shareLeague}/><Menu label="Commissioner Mode" icon="🔒" onClick={()=>go("commissioner")}/></div></Page>}
+      {view==="more" && <Page eyebrow="LEAGUE UNIVERSE · v6.2.1" title="More from Y's Guys" subtitle="A cleaner home for league stories, ideas and history."><div className="menuList"><Menu label="Community News" icon="📰" onClick={()=>go("community")}/><Menu label="Suggestion Box" icon="💡" onClick={()=>go("studio")}/><Menu label="Rule Book" icon="📖" onClick={()=>go("rules")}/><Menu label="League History" icon="🗓️" onClick={()=>go("timeline")}/><Menu label="Sunday MVP Voting" icon="🗳️" onClick={()=>go("voting")}/><Menu label="Share League" icon="↗️" onClick={shareLeague}/><Menu label="Commissioner Mode" icon="🔒" onClick={()=>go("commissioner")}/></div></Page>}
     </main>
 
     {toast && <div className="toast">✓ {toast}</div>}
@@ -698,7 +698,7 @@ function PlayerComparison({players,awards}:{players:Player[];awards:Award[]}){
     ["APG",avg(left.ast,left),avg(right.ast,right)],
     ["Awards",left.awards.length,right.awards.length],
   ] as const;
-  return <Page eyebrow="COLLECTOR SERIES · v6.2" title="Compare player cards." subtitle="Flip each card for official awards, career totals and milestone banners."><div className="compareSelectors"><label>Player one<select value={leftId} onChange={e=>setLeftId(e.target.value)}>{players.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label><span>VS</span><label>Player two<select value={rightId} onChange={e=>setRightId(e.target.value)}>{players.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label></div><section className="compareHero"><CompareIdentity player={left} roster={players} awards={awards}/><div className="versus">VS</div><CompareIdentity player={right} roster={players} awards={awards}/></section><section className="comparisonTable"><div className="comparisonHead"><b>{left.name}</b><span>CATEGORY</span><b>{right.name}</b></div>{rows.map(([label,a,b])=><div className="comparisonRow" key={label}><strong className={a>b?"winner":""}>{a}{label==="Win %"?"%":""}</strong><span>{label}</span><strong className={b>a?"winner":""}>{b}{label==="Win %"?"%":""}</strong></div>)}</section></Page>;
+  return <Page eyebrow="COLLECTOR SERIES · v6.2.1" title="Compare player cards." subtitle="Flip each card for official awards, career totals and milestone banners."><div className="compareSelectors"><label>Player one<select value={leftId} onChange={e=>setLeftId(e.target.value)}>{players.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label><span>VS</span><label>Player two<select value={rightId} onChange={e=>setRightId(e.target.value)}>{players.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label></div><section className="compareHero"><CompareIdentity player={left} roster={players} awards={awards}/><div className="versus">VS</div><CompareIdentity player={right} roster={players} awards={awards}/></section><section className="comparisonTable"><div className="comparisonHead"><b>{left.name}</b><span>CATEGORY</span><b>{right.name}</b></div>{rows.map(([label,a,b])=><div className="comparisonRow" key={label}><strong className={a>b?"winner":""}>{a}{label==="Win %"?"%":""}</strong><span>{label}</span><strong className={b>a?"winner":""}>{b}{label==="Win %"?"%":""}</strong></div>)}</section></Page>;
 }
 
 function PhotoSubmission({player,onSave}:{player:Player;onSave:(playerId:string,photoUrl:string)=>Promise<void>}){
@@ -712,7 +712,7 @@ function SuggestionBox({players,defaultPlayerId,onSubmit}:{players:Player[];defa
   const [playerId,setPlayerId]=useState(defaultPlayerId||players[0]?.id||"");const [message,setMessage]=useState("");const [imageUrl,setImageUrl]=useState("");const [busy,setBusy]=useState(false);const [done,setDone]=useState(false);const [error,setError]=useState("");
   const choose=async(file?:File)=>{if(!file)return;try{setImageUrl(await compressImage(file));setError("")}catch(error){setError(error instanceof Error?error.message:"Picture could not be prepared")}};
   const send=async()=>{if(!playerId||message.trim().length<3)return setError("Add your name and a short idea.");setBusy(true);setError("");try{await onSubmit({type:"suggestion",playerId,message:message.trim(),imageUrl:imageUrl||undefined});setMessage("");setImageUrl("");setDone(true)}catch(error){setError(error instanceof Error?error.message:"Suggestion could not be sent")}finally{setBusy(false)}};
-  return <Page eyebrow="PRIVATE INBOX · v6.2" title="Suggestion Box" subtitle="Send an idea, correction or picture directly to the Commissioner. Nothing appears publicly unless the Commissioner chooses to use it."><section className="suggestionCard">{done&&<div className="successNote">✓ Your suggestion is in the Commissioner Review Center.</div>}<label>Your player profile<select value={playerId} onChange={event=>setPlayerId(event.target.value)}>{players.map(player=><option value={player.id} key={player.id}>{player.name}</option>)}</select></label><label>Suggestion, idea or correction<textarea value={message} onChange={event=>setMessage(event.target.value)} maxLength={1200} placeholder="What should be added, corrected or remembered?"/></label><label className="uploadButton">Add one optional picture<input type="file" accept="image/*" onChange={event=>choose(event.target.files?.[0])}/></label>{imageUrl&&<div className="suggestionPreview"><img src={imageUrl} alt="Suggestion preview"/><button onClick={()=>setImageUrl("")}>Remove</button></div>}<p className="privacyNote">Pictures are compressed before upload. Video is not accepted in Version 6.2.</p><button className="primary" disabled={busy} onClick={send}>{busy?"Sending…":"Send privately"}</button>{error&&<p className="formError">{error}</p>}</section></Page>;
+  return <Page eyebrow="PRIVATE INBOX · v6.2.1" title="Suggestion Box" subtitle="Send an idea, correction or picture directly to the Commissioner. Nothing appears publicly unless the Commissioner chooses to use it."><section className="suggestionCard">{done&&<div className="successNote">✓ Your suggestion is in the Commissioner Review Center.</div>}<label>Your player profile<select value={playerId} onChange={event=>setPlayerId(event.target.value)}>{players.map(player=><option value={player.id} key={player.id}>{player.name}</option>)}</select></label><label>Suggestion, idea or correction<textarea value={message} onChange={event=>setMessage(event.target.value)} maxLength={1200} placeholder="What should be added, corrected or remembered?"/></label><label className="uploadButton">Add one optional picture<input type="file" accept="image/*" onChange={event=>choose(event.target.files?.[0])}/></label>{imageUrl&&<div className="suggestionPreview"><img src={imageUrl} alt="Suggestion preview"/><button onClick={()=>setImageUrl("")}>Remove</button></div>}<p className="privacyNote">Pictures are compressed before upload. Video is not accepted in Version 6.2.1.</p><button className="primary" disabled={busy} onClick={send}>{busy?"Sending…":"Send privately"}</button>{error&&<p className="formError">{error}</p>}</section></Page>;
 }
 
 function ReviewCenter({submissions,players,onChange}:{submissions:LeagueSubmission[];players:Player[];onChange:(next:LeagueSubmission[],nextPlayers?:Player[])=>void}){
@@ -756,7 +756,7 @@ function LeagueTimeline({games,awards,news,runs,history}:{games:Game[];awards:Aw
     ...history.map(entry=>({id:`history-${entry.id}`,kind:"History",icon:entry.icon||"📜",date:entry.date,title:entry.title,copy:entry.description,imageUrl:entry.imageUrl})),
   ].sort((a,b)=>{const left=new Date(a.date).getTime()||0,right=new Date(b.date).getTime()||0;return right-left;});
   const visible=filter==="All"?items:items.filter(item=>item.kind===filter);
-  return <Page eyebrow="LEAGUE HISTORY · v6.2" title="The Y's Guys timeline." subtitle="Games, awards, stories, Sundays and Commissioner-recorded memories preserved together."><div className="chips">{["All","History","Games","Awards","News","Sundays"].map(value=><button className={filter===value?"active":""} onClick={()=>setFilter(value)} key={value}>{value}</button>)}</div><section className="timeline">{visible.map(item=><article className={`timelineItem ${item.imageUrl?"withPhoto":""}`} key={item.id}>{item.imageUrl&&<img src={item.imageUrl} alt=""/>}<span className="timelineIcon">{item.icon}</span><div><small>{item.kind} · {item.date}</small><h2>{item.title}</h2><p>{item.copy}</p></div></article>)}</section></Page>;
+  return <Page eyebrow="LEAGUE HISTORY · v6.2.1" title="The Y's Guys timeline." subtitle="Games, awards, stories, Sundays and Commissioner-recorded memories preserved together."><div className="chips">{["All","History","Games","Awards","News","Sundays"].map(value=><button className={filter===value?"active":""} onClick={()=>setFilter(value)} key={value}>{value}</button>)}</div><section className="timeline">{visible.map(item=><article className={`timelineItem ${item.imageUrl?"withPhoto":""}`} key={item.id}>{item.imageUrl&&<img src={item.imageUrl} alt=""/>}<span className="timelineIcon">{item.icon}</span><div><small>{item.kind} · {item.date}</small><h2>{item.title}</h2><p>{item.copy}</p></div></article>)}</section></Page>;
 }
 
 function VotingCenter({polls,players,defaultPlayerId,onVote}:{polls:LeaguePoll[];players:Player[];defaultPlayerId:string;onVote:(pollId:string,voterId:string,nomineeId:string)=>Promise<void>}){
@@ -765,7 +765,7 @@ function VotingCenter({polls,players,defaultPlayerId,onVote}:{polls:LeaguePoll[]
   const [saving,setSaving]=useState("");
   const [error,setError]=useState("");
   const vote=async(poll:LeaguePoll)=>{const nomineeId=choices[poll.id];if(!voterId||!nomineeId)return;setSaving(poll.id);setError("");try{await onVote(poll.id,voterId,nomineeId)}catch(reason){setError(reason instanceof Error?reason.message:"Vote could not be saved")}finally{setSaving("")}};
-  return <Page eyebrow="THE BALLOT · v6.2" title="Sunday Run MVP" subtitle="Every current player is automatically available on the ballot. Choose your name and vote—no PIN required."><label className="voterSelect">Your name<select value={voterId} onChange={event=>{const id=event.target.value;setVoterId(id);const existing:Record<string,string>={};polls.forEach(poll=>{const vote=poll.votes.find(item=>item.playerId===id);if(vote)existing[poll.id]=vote.nomineeId});setChoices(existing)}}><option value="">Choose your name</option>{players.map(player=><option value={player.id} key={player.id}>{player.name}</option>)}</select></label>{error&&<div className="formError">{error}</div>}<div className="pollGrid">{polls.map(poll=>{const total=poll.votes.length,closed=poll.status==="closed"||Boolean(poll.deadline&&new Date(poll.deadline).getTime()<Date.now()),nominees=poll.category==="Weekly Award"?players:poll.nomineeIds.map(id=>players.find(player=>player.id===id)).filter((player):player is Player=>Boolean(player));return <article className="pollCard" key={poll.id}><header><span>{poll.category}</span><b>{closed?"CLOSED":"OPEN"}</b></header><h2>{poll.title}</h2><p>{poll.description}</p><div className="nomineeList">{nominees.map(player=>{const id=player.id,votes=poll.votes.filter(item=>item.nomineeId===id).length,percent=total?Math.round(votes/total*100):0;return <button disabled={closed||!voterId} className={choices[poll.id]===id?"selected":""} onClick={()=>setChoices({...choices,[poll.id]:id})} key={id}>{player.photoUrl?<img className="avatar photoAvatar" src={player.photoUrl} alt=""/>:<span className="avatar">{initials(player.name)}</span>}<div><b>{player.name}</b>{closed&&<i><em style={{width:`${percent}%`}}/></i>}</div>{closed?<strong>{votes} · {percent}%</strong>:<small>{choices[poll.id]===id?"Selected":"Choose"}</small>}</button>})}</div>{!closed&&<button className="primary voteButton" disabled={!voterId||!choices[poll.id]||saving===poll.id} onClick={()=>vote(poll)}>{saving===poll.id?"Saving…":poll.votes.some(item=>item.playerId===voterId)?"Update vote":"Submit vote"}</button>}<footer>{total} recorded {total===1?"vote":"votes"}{poll.deadline?` · Deadline ${new Date(poll.deadline).toLocaleString()}`:""}</footer></article>})}</div></Page>;
+  return <Page eyebrow="THE BALLOT · v6.2.1" title="Sunday Run MVP" subtitle="Every current player is automatically available on the ballot. Choose your name and vote—no PIN required."><label className="voterSelect">Your name<select value={voterId} onChange={event=>{const id=event.target.value;setVoterId(id);const existing:Record<string,string>={};polls.forEach(poll=>{const vote=poll.votes.find(item=>item.playerId===id);if(vote)existing[poll.id]=vote.nomineeId});setChoices(existing)}}><option value="">Choose your name</option>{players.map(player=><option value={player.id} key={player.id}>{player.name}</option>)}</select></label>{error&&<div className="formError">{error}</div>}<div className="pollGrid">{polls.map(poll=>{const total=poll.votes.length,closed=poll.status==="closed"||Boolean(poll.deadline&&new Date(poll.deadline).getTime()<Date.now()),nominees=poll.category==="Weekly Award"?players:poll.nomineeIds.map(id=>players.find(player=>player.id===id)).filter((player):player is Player=>Boolean(player));return <article className="pollCard" key={poll.id}><header><span>{poll.category}</span><b>{closed?"CLOSED":"OPEN"}</b></header><h2>{poll.title}</h2><p>{poll.description}</p><div className="nomineeList">{nominees.map(player=>{const id=player.id,votes=poll.votes.filter(item=>item.nomineeId===id).length,percent=total?Math.round(votes/total*100):0;return <button disabled={closed||!voterId} className={choices[poll.id]===id?"selected":""} onClick={()=>setChoices({...choices,[poll.id]:id})} key={id}>{player.photoUrl?<img className="avatar photoAvatar" src={player.photoUrl} alt=""/>:<span className="avatar">{initials(player.name)}</span>}<div><b>{player.name}</b>{closed&&<i><em style={{width:`${percent}%`}}/></i>}</div>{closed?<strong>{votes} · {percent}%</strong>:<small>{choices[poll.id]===id?"Selected":"Choose"}</small>}</button>})}</div>{!closed&&<button className="primary voteButton" disabled={!voterId||!choices[poll.id]||saving===poll.id} onClick={()=>vote(poll)}>{saving===poll.id?"Saving…":poll.votes.some(item=>item.playerId===voterId)?"Update vote":"Submit vote"}</button>}<footer>{total} recorded {total===1?"vote":"votes"}{poll.deadline?` · Deadline ${new Date(poll.deadline).toLocaleString()}`:""}</footer></article>})}</div></Page>;
 }
 
 function ShareStudio({players,games,runs,news}:{players:Player[];games:Game[];runs:SundayRun[];news:NewsStory[]}){
@@ -774,7 +774,7 @@ function ShareStudio({players,games,runs,news}:{players:Player[];games:Game[];ru
   const leaders=[...players].sort((a,b)=>b.pts-a.pts).slice(0,5),finals=[...games].filter(isFinal),latest=finals[finals.length-1],next=[...runs].sort((a,b)=>a.date.localeCompare(b.date)).find(run=>run.date>=new Date().toLocaleDateString("en-CA")),story=news.find(item=>item.featured&&item.published)??news.find(item=>item.published);
   useEffect(()=>{const canvas=canvasRef.current;if(!canvas)return;const ctx=canvas.getContext("2d");if(!ctx)return;const W=1080,H=1350;ctx.clearRect(0,0,W,H);const gradient=ctx.createLinearGradient(0,0,W,H);gradient.addColorStop(0,"#071c3e");gradient.addColorStop(.65,"#0A2D5E");gradient.addColorStop(1,"#173f69");ctx.fillStyle=gradient;ctx.fillRect(0,0,W,H);ctx.fillStyle="rgba(199,162,77,.12)";ctx.beginPath();ctx.arc(950,130,330,0,Math.PI*2);ctx.fill();ctx.fillStyle="#C7A24D";ctx.font="900 42px Arial";ctx.fillText("Y'S GUYS",70,85);ctx.fillStyle="#fff";ctx.font="900 78px Arial";const text=(value:string,x:number,y:number,max=900)=>{const words=value.split(" ");let line="",offset=0;for(const word of words){const test=`${line}${word} `;if(ctx.measureText(test).width>max&&line){ctx.fillText(line,x,y+offset);line=`${word} `;offset+=88}else line=test}ctx.fillText(line,x,y+offset);return y+offset};if(template==="leaders"){ctx.fillText("LEAGUE LEADERS",70,205);leaders.forEach((player,index)=>{const y=340+index*165;ctx.fillStyle=index===0?"#C7A24D":"#fff";ctx.font="900 58px Arial";ctx.fillText(`${index+1}`,75,y);ctx.fillStyle="#fff";ctx.fillText(player.name,150,y);ctx.fillStyle="#C7A24D";ctx.textAlign="right";ctx.fillText(`${player.pts} PTS`,1000,y);ctx.textAlign="left";ctx.fillStyle="#aebdd0";ctx.font="700 30px Arial";ctx.fillText(`${avg(player.pts,player)} PPG · ${player.wins}-${player.losses}`,150,y+45)});}else if(template==="result"&&latest){ctx.fillText("FINAL SCORE",70,205);ctx.fillStyle="#C7A24D";ctx.font="900 128px Arial";ctx.fillText(`${latest.scoreA} – ${latest.scoreB}`,70,420);ctx.fillStyle="#fff";ctx.font="900 64px Arial";ctx.fillText(latest.teamA,70,540);ctx.fillText(latest.teamB,70,630);ctx.fillStyle="#aebdd0";ctx.font="700 34px Arial";ctx.fillText(latest.date,70,735);ctx.fillText(`PLAYER OF THE GAME · ${latest.mvp||"—"}`,70,800)}else if(template==="sunday"&&next){const counts=runCounts(next);ctx.fillText("SUNDAY RUN",70,205);ctx.fillStyle="#C7A24D";ctx.font="900 80px Arial";ctx.fillText(formatRunDate(next.date),70,345);ctx.fillStyle="#fff";ctx.font="900 58px Arial";ctx.fillText(`${next.startTime} · ${next.location}`,70,445);ctx.font="900 170px Arial";ctx.fillText(String(counts.going),70,710);ctx.fillStyle="#C7A24D";ctx.font="900 40px Arial";ctx.fillText("PLAYERS GOING",75,775);ctx.fillStyle="#fff";ctx.font="700 34px Arial";const names=next.rsvps.filter(item=>item.status==="going").map(item=>players.find(player=>player.id===item.playerId)?.name).filter(Boolean).join(" · ");text(names||"RSVP NOW",70,885)}else if(template==="news"&&story){ctx.fillText(story.category.toUpperCase(),70,205);ctx.fillStyle="#fff";ctx.font="900 76px Arial";const end=text(story.headline,70,345);ctx.fillStyle="#C7A24D";ctx.font="700 36px Arial";text(story.summary,70,end+130)}ctx.fillStyle="#C7A24D";ctx.fillRect(70,1250,940,6);ctx.fillStyle="#fff";ctx.font="700 27px Arial";ctx.fillText("THE OFFICIAL Y'S GUYS LEAGUE UNIVERSE",70,1310)},[template,players,games,runs,news]);
   const download=()=>{const canvas=canvasRef.current;if(!canvas)return;const link=document.createElement("a");link.download=`ys-guys-${template}-${new Date().toISOString().slice(0,10)}.png`;link.href=canvas.toDataURL("image/png");link.click()};
-  return <Page eyebrow="CONTENT LAB · v6.2" title="Share Studio" subtitle="Turn live league data into a polished graphic ready for Instagram, group chat or the archive."><div className="studioLayout"><section><div className="chips">{([["leaders","Leaders"],["result","Latest Result"],["sunday","Sunday Turnout"],["news","Featured News"]] as const).map(([value,label])=><button className={template===value?"active":""} onClick={()=>setTemplate(value)} key={value}>{label}</button>)}</div><div className="studioHelp"><h2>Automatic league artwork</h2><p>The graphic is generated from current data. Update the league first, then return here and download a fresh version.</p><button className="primary" onClick={download}>Download PNG</button></div></section><canvas ref={canvasRef} width="1080" height="1350"/></div></Page>;
+  return <Page eyebrow="CONTENT LAB · v6.2.1" title="Share Studio" subtitle="Turn live league data into a polished graphic ready for Instagram, group chat or the archive."><div className="studioLayout"><section><div className="chips">{([["leaders","Leaders"],["result","Latest Result"],["sunday","Sunday Turnout"],["news","Featured News"]] as const).map(([value,label])=><button className={template===value?"active":""} onClick={()=>setTemplate(value)} key={value}>{label}</button>)}</div><div className="studioHelp"><h2>Automatic league artwork</h2><p>The graphic is generated from current data. Update the league first, then return here and download a fresh version.</p><button className="primary" onClick={download}>Download PNG</button></div></section><canvas ref={canvasRef} width="1080" height="1350"/></div></Page>;
 }
 
 function AttendanceCenter({runs,players,defaultPlayerId,onSubmit}:{runs:SundayRun[];players:Player[];defaultPlayerId:string;onSubmit:(runId:string,rsvp:Omit<RunRsvp,"updatedAt">)=>Promise<void>}){
@@ -798,7 +798,7 @@ function AttendanceCenter({runs,players,defaultPlayerId,onSubmit}:{runs:SundayRu
   if(!run)return <Page eyebrow="SUNDAY RUN" title="Attendance center" subtitle="Check back when the next Sunday is posted."><div className="communityEmpty"><span>🏀</span><h2>No Sunday runs posted yet.</h2></div></Page>;
   const counts=runCounts(run),deadlinePassed=Boolean(run.deadline&&new Date(run.deadline).getTime()<Date.now()),locked=run.status!=="open"||deadlinePassed;
   const group=(groupStatus:RsvpStatus,label:string)=>{const responses=run.rsvps.filter(item=>item.status===groupStatus);return <section className={`rsvpGroup ${groupStatus}`}><header><b>{label}</b><span>{responses.length}</span></header>{responses.length?responses.map(item=>{const player=players.find(person=>person.id===item.playerId);return <div className="rsvpPerson" key={item.playerId}><span className="avatar">{player?initials(player.name):"?"}</span><div><b>{player?.name??"Former player"}</b><small>{item.arrivalTime||"No arrival time"}{item.note?` · ${item.note}`:""} · Updated {new Date(item.updatedAt).toLocaleString()}</small></div></div>}):<p>No responses yet.</p>}</section>};
-  return <Page eyebrow="SUNDAY RUN · v6.2" title="Are you in?" subtitle="Choose your name and let the group know your Sunday availability. No account or PIN required.">
+  return <Page eyebrow="SUNDAY RUN · v6.2.1" title="Are you in?" subtitle="Choose your name and let the group know your Sunday availability. No account or PIN required.">
     {runs.length>1&&<div className="runSelector">{[...runs].sort((a,b)=>b.date.localeCompare(a.date)).map(item=><button className={item.id===run.id?"active":""} onClick={()=>setSelectedId(item.id)} key={item.id}>{localDate(item.date).toLocaleDateString("en-US",{month:"short",day:"numeric"})}<small>{item.status}</small></button>)}</div>}
     <section className={`attendanceHero ${run.status}`}><div><span>{run.status==="open"?"RSVP OPEN":run.status.toUpperCase()}</span><h2>{formatRunDate(run.date)}</h2><p>{run.startTime} · {run.location}</p>{run.notes&&<small>{run.notes}</small>}</div><div className="attendanceTotals"><span><b>{counts.going}</b>Going</span><span><b>{counts.maybe}</b>Maybe</span><span><b>{counts.out}</b>Out</span></div></section>
     <FridayReminderCard/>
@@ -816,10 +816,17 @@ function vapidKeyBytes(value:string){
   return Uint8Array.from(decoded,character=>character.charCodeAt(0));
 }
 
+async function saveReminderSubscription(subscription:PushSubscription){
+  const response=await fetch("/api/push-subscription",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:subscription.toJSON()})});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(result.error||"The reminder could not be saved.");
+}
+
 function FridayReminderCard(){
   const [status,setStatus]=useState<ReminderStatus>("checking");
-  const [working,setWorking]=useState(false);
+  const [action,setAction]=useState<"enable"|"disable"|"test"|null>(null);
   const [error,setError]=useState("");
+  const [notice,setNotice]=useState("");
 
   useEffect(()=>{
     let active=true;
@@ -837,9 +844,11 @@ function FridayReminderCard(){
       try{
         const registration=await navigator.serviceWorker.ready;
         const subscription=await registration.pushManager.getSubscription();
-        if(active)setStatus(subscription?"enabled":"ready");
-      }catch{
-        if(active)setStatus("unsupported");
+        if(!subscription){if(active)setStatus("ready");return}
+        await saveReminderSubscription(subscription);
+        if(active)setStatus("enabled");
+      }catch(reason){
+        if(active){setStatus("ready");setError(reason instanceof Error?reason.message:"The reminder needs to be enabled again.")}
       }
     };
     inspect();
@@ -847,7 +856,7 @@ function FridayReminderCard(){
   },[]);
 
   const enable=async()=>{
-    setWorking(true);setError("");
+    setAction("enable");setError("");setNotice("");
     let subscription:PushSubscription|null=null;
     try{
       const permission=await Notification.requestPermission();
@@ -860,18 +869,17 @@ function FridayReminderCard(){
       if(!keyResponse.ok)throw new Error(keyResult.error||"Friday reminders are not configured yet.");
       const registration=await navigator.serviceWorker.ready;
       subscription=await registration.pushManager.getSubscription()??await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:vapidKeyBytes(keyResult.publicKey)});
-      const saveResponse=await fetch("/api/push-subscription",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:subscription.toJSON()})});
-      const saveResult=await saveResponse.json().catch(()=>({}));
-      if(!saveResponse.ok)throw new Error(saveResult.error||"The reminder could not be enabled.");
+      await saveReminderSubscription(subscription);
       setStatus("enabled");
+      setNotice("Reminder saved. Send a test to confirm this phone can receive it.");
     }catch(reason){
       if(subscription&&status!=="enabled")await subscription.unsubscribe().catch(()=>false);
       setError(reason instanceof Error?reason.message:"The reminder could not be enabled.");
-    }finally{setWorking(false)}
+    }finally{setAction(null)}
   };
 
   const disable=async()=>{
-    setWorking(true);setError("");
+    setAction("disable");setError("");setNotice("");
     try{
       const registration=await navigator.serviceWorker.ready;
       const subscription=await registration.pushManager.getSubscription();
@@ -883,7 +891,22 @@ function FridayReminderCard(){
       }
       setStatus("ready");
     }catch(reason){setError(reason instanceof Error?reason.message:"The reminder could not be disabled.")}
-    finally{setWorking(false)}
+    finally{setAction(null)}
+  };
+
+  const sendTest=async()=>{
+    setAction("test");setError("");setNotice("");
+    try{
+      const registration=await navigator.serviceWorker.ready;
+      const subscription=await registration.pushManager.getSubscription();
+      if(!subscription){setStatus("ready");throw new Error("Enable reminders before sending a test.")}
+      await saveReminderSubscription(subscription);
+      const response=await fetch("/api/test-notification",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({endpoint:subscription.endpoint})});
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(result.error||"The test notification could not be sent.");
+      setNotice("Test sent. It should appear on this phone within a few seconds.");
+    }catch(reason){setError(reason instanceof Error?reason.message:"The test notification could not be sent.")}
+    finally{setAction(null)}
   };
 
   const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -898,8 +921,8 @@ function FridayReminderCard(){
           :"Get a Friday 6:00 PM reminder to choose In, Maybe, or Out for Sunday morning.";
 
   return <section className={`reminderCard ${status==="enabled"?"enabled":""}`} aria-live="polite">
-    <span className="reminderIcon">🔔</span><div><small>FRIDAY RSVP REMINDER</small><h2>{status==="enabled"?"Reminder enabled":"Never forget to RSVP"}</h2><p>{copy}</p>{error&&<b className="reminderError">{error}</b>}</div>
-    {status==="enabled"?<button disabled={working} onClick={disable}>{working?"Saving…":"Disable"}</button>:status==="ready"?<button disabled={working} onClick={enable}>{working?"Enabling…":"Enable reminders"}</button>:status==="checking"?<button disabled>Checking…</button>:null}
+    <span className="reminderIcon">🔔</span><div><small>FRIDAY RSVP REMINDER</small><h2>{status==="enabled"?"Reminder enabled":"Never forget to RSVP"}</h2><p>{copy}</p>{notice&&<b className="reminderNotice">{notice}</b>}{error&&<b className="reminderError">{error}</b>}</div>
+    {status==="enabled"?<div className="reminderActions"><button disabled={Boolean(action)} onClick={sendTest}>{action==="test"?"Sending…":"Send test"}</button><button className="secondary" disabled={Boolean(action)} onClick={disable}>{action==="disable"?"Saving…":"Disable"}</button></div>:status==="ready"?<button disabled={Boolean(action)} onClick={enable}>{action==="enable"?"Enabling…":"Enable reminders"}</button>:status==="checking"?<button disabled>Checking…</button>:null}
   </section>;
 }
 
@@ -910,7 +933,7 @@ function CalendarView({games,runs}:{games:Game[];runs:SundayRun[]}){
   const cells=Array.from({length:offset+days},(_,index)=>index<offset?null:index-offset+1);
   const gamesForDay=(day:number)=>games.filter(game=>{const date=new Date(game.date);return !Number.isNaN(date.getTime())&&date.getFullYear()===year&&date.getMonth()===monthIndex&&date.getDate()===day});
   const runsForDay=(day:number)=>runs.filter(run=>{const date=localDate(run.date);return date.getFullYear()===year&&date.getMonth()===monthIndex&&date.getDate()===day});
-  return <Page eyebrow="LEAGUE CALENDAR · v6.2" title="Every Sunday, in one place." subtitle="Attendance, scheduled games and final results share one calendar."><div className="calendarControls"><button aria-label="Previous month" onClick={()=>setMonth(new Date(year,monthIndex-1,1))}>←</button><h2>{month.toLocaleString(undefined,{month:"long",year:"numeric"})}</h2><button aria-label="Next month" onClick={()=>setMonth(new Date(year,monthIndex+1,1))}>→</button></div><section className="calendar"><div className="weekday">{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day=><b key={day}>{day}</b>)}</div><div className="calendarGrid">{cells.map((day,index)=><div className={day?(index%7===0?"calendarDay sunday":"calendarDay"):"calendarDay blank"} key={`${year}-${monthIndex}-${index}`}>{day&&<><span>{day}</span>{runsForDay(day).map(run=><article className={`calendarRun ${run.status}`} key={run.id}><b>{run.status==="cancelled"?"Cancelled":`${runCounts(run).going} going`}</b><small>{run.startTime} · {run.location}</small></article>)}{gamesForDay(day).map(game=><article className={isFinal(game)?"calendarGame final":"calendarGame"} key={game.id}><b>{game.teamA} {isFinal(game)?game.scoreA:""} {isFinal(game)?"–":"vs"} {game.teamB} {isFinal(game)?game.scoreB:""}</b><small>{game.startTime||game.title}</small></article>)}</>}</div>)}</div></section></Page>;
+  return <Page eyebrow="LEAGUE CALENDAR · v6.2.1" title="Every Sunday, in one place." subtitle="Attendance, scheduled games and final results share one calendar."><div className="calendarControls"><button aria-label="Previous month" onClick={()=>setMonth(new Date(year,monthIndex-1,1))}>←</button><h2>{month.toLocaleString(undefined,{month:"long",year:"numeric"})}</h2><button aria-label="Next month" onClick={()=>setMonth(new Date(year,monthIndex+1,1))}>→</button></div><section className="calendar"><div className="weekday">{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day=><b key={day}>{day}</b>)}</div><div className="calendarGrid">{cells.map((day,index)=><div className={day?(index%7===0?"calendarDay sunday":"calendarDay"):"calendarDay blank"} key={`${year}-${monthIndex}-${index}`}>{day&&<><span>{day}</span>{runsForDay(day).map(run=><article className={`calendarRun ${run.status}`} key={run.id}><b>{run.status==="cancelled"?"Cancelled":`${runCounts(run).going} going`}</b><small>{run.startTime} · {run.location}</small></article>)}{gamesForDay(day).map(game=><article className={isFinal(game)?"calendarGame final":"calendarGame"} key={game.id}><b>{game.teamA} {isFinal(game)?game.scoreA:""} {isFinal(game)?"–":"vs"} {game.teamB} {isFinal(game)?game.scoreB:""}</b><small>{game.startTime||game.title}</small></article>)}</>}</div>)}</div></section></Page>;
 }
 
 function RuleBook(){
@@ -921,7 +944,7 @@ function RuleBook(){
     {icon:"🏛️",title:"Hall of Fame",rules:["Hall of Fame Formula is calculated by winning, performance, and awards.\nA breakdown will be provided in the app at a later date."]},
     {icon:"🏆",title:"League Standard",rules:["Have fun win the day!"]},
   ];
-  return <Page eyebrow="OFFICIAL RULE BOOK · v6.2" title="How the Y's Guys universe operates." subtitle="The official rules of the Sunday run."><div className="ruleHero"><span>YG</span><div><b>LEAGUE STANDARD</b><h2>Have fun win the day!</h2></div></div><div className="rulesGrid">{sections.map((section,index)=><section className="ruleSection" key={section.title}><div><span>{section.icon}</span><small>ARTICLE {index+1}</small></div><h2>{section.title}</h2><ol start={index+1}>{section.rules.map(rule=><li key={rule}>{rule}</li>)}</ol></section>)}</div></Page>;
+  return <Page eyebrow="OFFICIAL RULE BOOK · v6.2.1" title="How the Y's Guys universe operates." subtitle="The official rules of the Sunday run."><div className="ruleHero"><span>YG</span><div><b>LEAGUE STANDARD</b><h2>Have fun win the day!</h2></div></div><div className="rulesGrid">{sections.map((section,index)=><section className="ruleSection" key={section.title}><div><span>{section.icon}</span><small>ARTICLE {index+1}</small></div><h2>{section.title}</h2><ol start={index+1}>{section.rules.map(rule=><li key={rule}>{rule}</li>)}</ol></section>)}</div></Page>;
 }
 
 function CommissionerDashboard({players,games,runs,news,polls,history,onOpen}:{players:Player[];games:Game[];runs:SundayRun[];news:NewsStory[];polls:LeaguePoll[];history:HistoryEntry[];onOpen:(tab:AdminTab)=>void}){
@@ -1235,8 +1258,10 @@ const reminderStyles = `
 .reminderCard p{margin:0;color:#66758a;font-size:13px;line-height:1.45}
 .reminderCard button{border:0;border-radius:12px;background:#0A2D5E;color:white;padding:12px 14px;font-weight:1000;white-space:nowrap}
 .reminderCard button:disabled{opacity:.58}
+.reminderActions{display:flex;gap:8px;align-items:center}.reminderCard .reminderActions .secondary{background:#eef2f8;color:#0A2D5E}
+.reminderNotice{display:block;margin-top:8px;color:#287345;font-size:11px}
 .reminderError{display:block;margin-top:8px;color:#a62e2e;font-size:11px}
-@media(max-width:640px){.reminderCard{grid-template-columns:auto 1fr}.reminderCard button{grid-column:1/-1;width:100%}}
+@media(max-width:640px){.reminderCard{grid-template-columns:auto 1fr}.reminderCard>button,.reminderActions{grid-column:1/-1;width:100%}.reminderActions button{flex:1}}
 `;
 
 const styles = `
