@@ -71,12 +71,14 @@ export default async function handler(request, response) {
           removed += 1;
         } else {
           failed += 1;
-          console.error("friday-reminder-send", row.endpoint, error?.statusCode || error);
+          console.error("friday-reminder-send", { statusCode: error?.statusCode || null, message: error?.message || String(error) });
         }
       }
     }
 
-    return response.status(200).json({ sent, removed, failed, total: subscriptions.length });
+    const result = { sent, removed, failed, total: subscriptions.length };
+    console.log("friday-reminder-result", result);
+    return response.status(200).json(result);
   } catch (error) {
     console.error("friday-reminder-api", error);
     return response.status(500).json({ error: "Friday reminders could not be sent" });
