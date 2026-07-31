@@ -10,12 +10,17 @@ export default function handler(_request, response) {
     ),
     commissionerPassword: Boolean(process.env.COMMISSIONER_PASSWORD),
     sessionSecret: Boolean(process.env.SESSION_SECRET),
+    fridayReminders: Boolean(
+      process.env.CRON_SECRET &&
+      process.env.VAPID_PUBLIC_KEY &&
+      process.env.VAPID_PRIVATE_KEY
+    ),
   };
 
-  const ready = configured.postgresUrl && configured.commissionerPassword && configured.sessionSecret;
+  const ready = configured.postgresUrl && configured.commissionerPassword && configured.sessionSecret && configured.fridayReminders;
   response.status(ready ? 200 : 503).json({
     status: ready ? "ready" : "configuration-required",
     configured,
-    version: "6.1.0-player-card-corrections",
+    version: "6.2.0-friday-rsvp-reminders",
   });
 }
