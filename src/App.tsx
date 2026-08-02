@@ -18,7 +18,7 @@ type WeeklyMvpCredit = { id:string; season:string; count:number; sourcePollId?:s
 type StatLine = { playerId:string; team:string; pts:number; reb:number; ast:number; turnovers:number };
 type GameStatus = "scheduled" | "final";
 type Game = { id: string; date: string; startTime?:string; location?:string; status?:GameStatus; title: string; teamA: string; scoreA: number; teamB: string; scoreB: number; mvp: string; recap: string; boxScore?:StatLine[] };
-type Award = { season: string; name: string; winner: string; icon: string };
+type Award = { season: string; name: string; winner: string; winnerId?:string; icon: string };
 type RecordItem = { category: string; label: string; holder: string; value: string; date: string };
 type NewsStory = {
   id:string; headline:string; summary:string; category:string; date:string;
@@ -84,9 +84,9 @@ const initialAwards: Award[] = [
   { season:"2025", name:"Most Valuable Player", winner:"Paul Peters", icon:"👑" },
   { season:"2025", name:"Defensive Player of the Year", winner:"Nick D", icon:"🛡️" },
   { season:"2025", name:"Most Improved", winner:"Vic", icon:"📈" },
-  { season:"2025", name:"Clutch Award", winner:"Sal Tinoco", icon:"⏱️" },
+  { season:"2025", name:"Clutch Award", winner:"Sal Tinoco", winnerId:"sal", icon:"⏱️" },
   { season:"2025", name:"Caruso Hustle Award", winner:"Alex", icon:"🔥" },
-  { season:"2025", name:"Locker Room Award", winner:"Mike", icon:"🤝" },
+  { season:"2025", name:"Locker Room Award", winner:"Mike", winnerId:"mike", icon:"🤝" },
 ];
 
 const initialRecords: RecordItem[] = [
@@ -200,6 +200,7 @@ function hallStatus(total:number){
 }
 const WEEKLY_MVP_HALL_POINTS=0.5;
 function weeklyMvpWins(player:Player){return (player.weeklyMvpCredits??[]).reduce((sum,credit)=>sum+Math.max(0,Number(credit.count)||0),0);}
+function awardBelongsToPlayer(award:Award,player:Player){return award.winnerId===player.id||award.winner.trim().toLowerCase()===player.name.trim().toLowerCase();}
 function hallProgress(total:number){return Math.min(100,Math.round(total*10)/10);}
 function formatHallValue(value:number){return Number.isInteger(value)?String(value):value.toFixed(1);}
 function syncWeeklyMvpPollCredits(players:Player[],polls:LeaguePoll[]){
@@ -232,7 +233,7 @@ function hallResume(player:Player,awards:Award[]){
     {key:"wins" as const,label:"Career Wins",value:player.wins},
   ];
   const milestones=stats.flatMap(stat=>HALL_MILESTONES[stat.key].filter(item=>stat.value>=item.threshold).map(item=>({...item,category:stat.label,value:stat.value})));
-  const officialAwards=awards.filter(award=>award.winner.trim().toLowerCase()===player.name.trim().toLowerCase()).map(award=>({...award,hallPoints:awardHallPoints(award.name)})).filter(award=>award.hallPoints>0);
+  const officialAwards=awards.filter(award=>awardBelongsToPlayer(award,player)).map(award=>({...award,hallPoints:awardHallPoints(award.name)})).filter(award=>award.hallPoints>0);
   const milestonePoints=milestones.reduce((sum,item)=>sum+item.hallPoints,0);
   const awardPoints=officialAwards.reduce((sum,item)=>sum+item.hallPoints,0);
   const weeklyMvpCount=weeklyMvpWins(player);
@@ -656,7 +657,7 @@ function PlayerDirectoryCard({player,roster,isMyPlayer,onOpen,onPhotoSave}:{play
 }
 
 function PlayerUniverseProfile({player,roster,games,sundaySessions,nextRun,officialAwards,rank,isMyPlayer,onRsvp,onPhotoSave,onPositionChange,onBack}:{player:Player;roster:Player[];games:Game[];sundaySessions:SundaySession[];nextRun?:SundayRun;officialAwards:Award[];rank:number;isMyPlayer:boolean;onRsvp:(runId:string,rsvp:Omit<RunRsvp,"updatedAt">)=>Promise<void>;onPhotoSave:(playerId:string,photoUrl:string)=>Promise<void>;onPositionChange:(playerId:string,position:string)=>Promise<void>;onBack:()=>void}){
-  const honors=[...new Set([...player.awards,...officialAwards.filter(a=>a.winner.toLowerCase()===player.name.toLowerCase()).map(a=>`${a.season} ${a.name}`)])];
+  const honors=[...new Set([...player.awards,...officialAwards.filter(award=>awardBelongsToPlayer(award,player)).map(a=>`${a.season} ${a.name}`)])];
   const logs=games.filter(game=>game.boxScore?.some(line=>line.playerId===player.id)).map(game=>({game,line:game.boxScore!.find(line=>line.playerId===player.id)!}));
   const rating=overallRating(player,roster,games);
   const components=overallComponents(player,roster);
@@ -746,7 +747,7 @@ function PowerRankingManager({rankings,players,onChange}:{rankings:PowerRankingS
 }
 
 function CompareIdentity({player,roster,awards}:{player:Player;roster:Player[];awards:Award[]}){
-  const [flipped,setFlipped]=useState(false);const resume=hallResume(player,awards);const honors=awards.filter(award=>award.winner.toLowerCase()===player.name.toLowerCase());
+  const [flipped,setFlipped]=useState(false);const resume=hallResume(player,awards);const honors=awards.filter(award=>awardBelongsToPlayer(award,player));
   const rating=overallRating(player,roster);
   return <button className={`tradingCard ${flipped?"flipped":""}`} onClick={()=>setFlipped(value=>!value)} aria-label={`Flip ${player.name} player card`}><span className="cardCorner">YG · {player.jerseyNumber?`#${player.jerseyNumber}`:player.position}</span>{!flipped?<><div className="cardPortrait">{player.photoUrl?<img src={player.photoUrl} alt=""/>:<span>{initials(player.name)}</span>}<strong>{rating??"PROV"}<small>{rating===null?"":"OVR"}</small></strong></div><div className="cardName"><small>{player.position} · {archetype(player)}</small><h2>{player.name}</h2><p>“{player.nickname}”</p></div><div className="miniBadgeRow">{playerBadges(player).slice(0,3).map(badge=><i title={badge.name} key={badge.name}>{badge.icon}</i>)}</div></>:<div className="cardBack"><small>OFFICIAL CAREER CARD</small><h2>{player.name}</h2><div className="cardTotals"><span><b>{player.pts}</b>PTS</span><span><b>{player.reb}</b>REB</span><span><b>{player.ast}</b>AST</span><span><b>{player.wins}</b>WINS</span></div><h3>Accomplishments</h3>{honors.length?honors.map(honor=><p className="majorHonor" key={`${honor.season}-${honor.name}`}>★ {honor.season} {honor.name}</p>):<p>No official awards yet.</p>}<p>{resume.milestones.length} milestone banners</p><strong>{player.wins}-{player.losses} career record</strong></div>}<span className="flipHint">Tap to {flipped?"see front":"flip"}</span></button>;
 }
@@ -1197,16 +1198,16 @@ function PollManager({polls,players,onChange}:{polls:LeaguePoll[];players:Player
 }
 
 function AwardManager({awards,players,onChange}:{awards:Award[];players:Player[];onChange:(awards:Award[])=>void}){
-  const empty:Award={season:"2026",name:"",winner:players[0]?.name??"",icon:"🏆"};
+  const empty:Award={season:"2026",name:"",winner:players[0]?.name??"",winnerId:players[0]?.id,icon:"🏆"};
   const [draft,setDraft]=useState<Award>(empty);
   const [editIndex,setEditIndex]=useState<number|null>(null);
-  const save=(e:React.FormEvent)=>{e.preventDefault();if(!draft.name.trim()||!draft.winner.trim())return alert("Award name and winner are required.");const next=editIndex===null?[...awards,draft]:awards.map((a,i)=>i===editIndex?draft:a);onChange(next);setDraft(empty);setEditIndex(null);};
+  const save=(e:React.FormEvent)=>{e.preventDefault();if(!draft.name.trim()||!draft.winner.trim())return alert("Award name and winner are required.");const winner=players.find(player=>player.id===draft.winnerId);const clean={...draft,winner:winner?.name??draft.winner,winnerId:winner?.id??draft.winnerId};const next=editIndex===null?[...awards,clean]:awards.map((a,i)=>i===editIndex?clean:a);onChange(next);setDraft(empty);setEditIndex(null);};
   const remove=(index:number)=>{if(confirm("Delete this award?"))onChange(awards.filter((_,i)=>i!==index));};
   return <div className="managerGrid"><form className="adminCard" onSubmit={save}><h2>{editIndex===null?"Add an award":"Edit award"}</h2><p>Maintain the official trophy room.</p><div className="formGrid">
     <label>Season<input required value={draft.season} onChange={e=>setDraft({...draft,season:e.target.value})}/></label>
     <label>Icon<input value={draft.icon} onChange={e=>setDraft({...draft,icon:e.target.value})}/></label>
     <label className="wide">Award name<input required value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label>
-    <label className="wide">Winner<select value={draft.winner} onChange={e=>setDraft({...draft,winner:e.target.value})}><option value="">Select a player</option>{players.map(p=><option key={p.id}>{p.name}</option>)}</select></label>
+    <label className="wide">Winner<select value={draft.winnerId??players.find(player=>player.name===draft.winner)?.id??""} onChange={e=>{const winner=players.find(player=>player.id===e.target.value);setDraft({...draft,winnerId:winner?.id,winner:winner?.name??""})}}><option value="">Select a player</option>{players.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label>
   </div><div className="formActions"><button className="primary" type="submit">{editIndex===null?"Add award":"Save changes"}</button>{editIndex!==null&&<button className="secondary" type="button" onClick={()=>{setDraft(empty);setEditIndex(null)}}>Cancel</button>}</div></form>
   <ManageList title="Award history" empty="No awards yet.">{awards.map((a,i)=><div className="manageRow" key={`${a.season}-${a.name}-${i}`}><div><b>{a.icon} {a.name}</b><small>{a.season} · {a.winner}</small></div><button onClick={()=>{setDraft(a);setEditIndex(i)}}>Edit</button><button className="deleteLink" onClick={()=>remove(i)}>Delete</button></div>)}</ManageList></div>;
 }
