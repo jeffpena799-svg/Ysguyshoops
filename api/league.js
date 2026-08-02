@@ -4,6 +4,40 @@ import { isAuthorized } from "./_auth.js";
 const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
 const sql = postgres(connectionString, { ssl: "require", max: 1, idle_timeout: 20 });
 
+const HISTORICAL_WEEKLY_MVPS_2025 = {
+  steve: 2,
+  vic: 6,
+  paul: 3,
+  jose: 5,
+  jeffrey: 3,
+  ty: 1,
+  alex: 5,
+  "nick-d": 1,
+  hunter: 2,
+  mario: 3,
+  dusko: 1,
+  sal: 1,
+};
+
+export function applyHistoricalWeeklyMvpCredits(data) {
+  if (!data || !Array.isArray(data.players)) return { data, changed: false };
+  let changed = false;
+  const players = data.players.map(player => {
+    const normalizedName = String(player.name || "").trim().toLowerCase();
+    const count = HISTORICAL_WEEKLY_MVPS_2025[player.id] ?? HISTORICAL_WEEKLY_MVPS_2025[normalizedName];
+    if (!count) return player;
+    const credits = Array.isArray(player.weeklyMvpCredits) ? [...player.weeklyMvpCredits] : [];
+    const index = credits.findIndex(credit => credit?.id === "weekly-mvp-2025-history");
+    const credit = { id: "weekly-mvp-2025-history", season: "2025", count };
+    if (index === -1) credits.push(credit);
+    else if (credits[index]?.season !== "2025" || Number(credits[index]?.count) !== count) credits[index] = credit;
+    else return player;
+    changed = true;
+    return { ...player, weeklyMvpCredits: credits };
+  });
+  return { data: changed ? { ...data, players } : data, changed };
+}
+
 async function ensureTable() {
   await sql`
     CREATE TABLE IF NOT EXISTS league_state (
@@ -34,6 +68,25 @@ export default async function handler(request, response) {
       }
       const rows = await sql`SELECT data, revision, updated_at FROM league_state WHERE id = 1`;
       if (!rows.length) return response.status(200).json({ data: null, revision: 0, updatedAt: null });
+      const migration = applyHistoricalWeeklyMvpCredits(rows[0].data);
+      if (migration.changed) {
+        const migrated = await sql`
+          UPDATE league_state
+          SET data = ${sql.json(migration.data)}, revision = revision + 1, updated_at = NOW()
+          WHERE id = 1 AND revision = ${rows[0].revision}
+          RETURNING data, revision, updated_at
+        `;
+        if (migrated.length) {
+          await sql`
+            INSERT INTO league_history (revision, data, created_at)
+            VALUES (${migrated[0].revision}, ${sql.json(migrated[0].data)}, ${migrated[0].updated_at})
+            ON CONFLICT (revision) DO NOTHING
+          `;
+          return response.status(200).json({ data: migrated[0].data, revision: migrated[0].revision, updatedAt: migrated[0].updated_at });
+        }
+        const refreshed = await sql`SELECT data, revision, updated_at FROM league_state WHERE id = 1`;
+        return response.status(200).json({ data: refreshed[0].data, revision: refreshed[0].revision, updatedAt: refreshed[0].updated_at });
+      }
       return response.status(200).json({ data: rows[0].data, revision: rows[0].revision, updatedAt: rows[0].updated_at });
     }
     if (request.method === "PUT") {
