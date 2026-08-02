@@ -21,6 +21,6 @@ export default function handler(_request, response) {
   response.status(ready ? 200 : 503).json({
     status: ready ? "ready" : "configuration-required",
     configured,
-    version: "6.2.1-notification-delivery-repair",
+    version: "6.3.0-weekly-mvp-hall",
   });
 }
