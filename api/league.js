@@ -38,6 +38,34 @@ export function applyHistoricalWeeklyMvpCredits(data) {
   return { data: changed ? { ...data, players } : data, changed };
 }
 
+export function applyHistoricalTrophyCredits(data) {
+  if (!data || !Array.isArray(data.players) || !Array.isArray(data.awards)) return { data, changed: false };
+  const playerId = name => data.players.find(player => String(player.name || "").trim().toLowerCase() === name)?.id;
+  const required = [
+    { season: "2025", name: "Clutch Award", winner: "Sal Tinoco", winnerId: playerId("sal"), icon: "⏱️" },
+    { season: "2025", name: "Locker Room Award", winner: "Mike", winnerId: playerId("mike"), icon: "🤝" },
+  ].filter(award => award.winnerId);
+  let changed = false;
+  const awards = data.awards.map(award => ({ ...award }));
+  for (const requiredAward of required) {
+    const index = awards.findIndex(award => String(award.season) === requiredAward.season && String(award.name).trim().toLowerCase() === requiredAward.name.toLowerCase());
+    if (index === -1) {
+      awards.push(requiredAward);
+      changed = true;
+    } else if (awards[index].winnerId !== requiredAward.winnerId) {
+      awards[index] = { ...awards[index], winnerId: requiredAward.winnerId };
+      changed = true;
+    }
+  }
+  return { data: changed ? { ...data, awards } : data, changed };
+}
+
+export function applyLeagueMigrations(data) {
+  const weeklyMvp = applyHistoricalWeeklyMvpCredits(data);
+  const trophies = applyHistoricalTrophyCredits(weeklyMvp.data);
+  return { data: trophies.data, changed: weeklyMvp.changed || trophies.changed };
+}
+
 async function ensureTable() {
   await sql`
     CREATE TABLE IF NOT EXISTS league_state (
@@ -68,7 +96,7 @@ export default async function handler(request, response) {
       }
       const rows = await sql`SELECT data, revision, updated_at FROM league_state WHERE id = 1`;
       if (!rows.length) return response.status(200).json({ data: null, revision: 0, updatedAt: null });
-      const migration = applyHistoricalWeeklyMvpCredits(rows[0].data);
+      const migration = applyLeagueMigrations(rows[0].data);
       if (migration.changed) {
         const migrated = await sql`
           UPDATE league_state
