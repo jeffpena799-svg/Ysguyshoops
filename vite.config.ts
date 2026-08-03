@@ -1,5 +1,7 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import { version632Feature } from "./version632.plugin";
+import { version64Feature } from "./version64.plugin";
 
 function replaceRequired(source: string, search: string, replacement: string): string {
   if (!source.includes(search)) {
@@ -104,5 +106,5 @@ function closeSundayFeature(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [closeSundayFeature(), react()],
+  plugins: [closeSundayFeature(), version632Feature(), version64Feature(), react()],
 });
