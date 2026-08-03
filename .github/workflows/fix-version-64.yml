@@ -1,0 +1,41 @@
+name: Fix Version 6.4 syntax
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-version-64.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Repair nested template literal
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('version64.plugin.ts')
+          text=path.read_text()
+          old='setScanMessage(matched?`Interpreted ${matched} player rows. Review every value before publishing.`:"No player names were matched. Try one player per line with labeled stats.");'
+          new='setScanMessage(matched?"Interpreted "+matched+" player rows. Review every value before publishing.":"No player names were matched. Try one player per line with labeled stats.");'
+          if old not in text:
+              raise SystemExit('Expected syntax line not found')
+          path.write_text(text.replace(old,new))
+          PY
+      - name: Validate production build
+        run: |
+          npm ci
+          npm run build
+      - name: Publish repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add version64.plugin.ts
+          git commit -m "Fix Version 6.4 pasted-stat interpreter syntax"
+          git push
