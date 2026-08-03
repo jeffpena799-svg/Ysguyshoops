@@ -1,0 +1,54 @@
+name: Apply Version 6.3.2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-version-632.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Wire targeted feature plugin and install icons
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          vite = Path('vite.config.ts')
+          text = vite.read_text()
+          import_line = 'import { version632Feature } from "./version632.plugin";'
+          if import_line not in text:
+              text = text.replace('import react from "@vitejs/plugin-react";\n', 'import react from "@vitejs/plugin-react";\n' + import_line + '\n')
+          text = text.replace('plugins: [closeSundayFeature(), react()]', 'plugins: [closeSundayFeature(), version632Feature(), react()]')
+          vite.write_text(text)
+
+          index = Path('index.html')
+          html = index.read_text()
+          icon_tags = '    <link rel="icon" type="image/svg+xml" href="/ys-guys-logo.svg" />\n    <link rel="apple-touch-icon" href="/ys-guys-logo.svg" />\n'
+          if 'rel="apple-touch-icon"' not in html:
+              html = html.replace('    <link rel="manifest" href="/manifest.webmanifest" />\n', icon_tags + '    <link rel="manifest" href="/manifest.webmanifest" />\n')
+          index.write_text(html)
+
+          manifest = Path('public/manifest.webmanifest')
+          data = manifest.read_text()
+          data = data.replace('"icons": []', '"icons": [\n    {\n      "src": "/ys-guys-logo.svg",\n      "sizes": "any",\n      "type": "image/svg+xml",\n      "purpose": "any maskable"\n    }\n  ]')
+          manifest.write_text(data)
+          PY
+      - name: Validate build
+        run: |
+          npm ci
+          npm run build
+      - name: Commit Version 6.3.2
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add vite.config.ts index.html public/manifest.webmanifest
+          git commit -m "Wire Version 6.3.2 branding and debut overall logic"
+          git push
