@@ -75,7 +75,7 @@ function AttendanceCenter({runs,players,defaultPlayerId,onSubmit}`
       matched++;
       return {playerId:player.id,gp:gpValue,wins,pts:read([/(?:points?|pts)\\s*[:=-]?\\s*(\\d+)/i,/(\\d+)\\s*(?:points?|pts)/i]),reb:read([/(?:rebounds?|reb)\\s*[:=-]?\\s*(\\d+)/i,/(\\d+)\\s*(?:rebounds?|reb)/i]),ast:read([/(?:assists?|ast)\\s*[:=-]?\\s*(\\d+)/i,/(\\d+)\\s*(?:assists?|ast)/i]),turnovers:read([/(?:turnovers?|tos?|to)\\s*[:=-]?\\s*(\\d+)/i,/(\\d+)\\s*(?:turnovers?|tos?)/i]),included:true,uncertain:false};
     }));
-    setScanMessage(matched?`Interpreted ${matched} player rows. Review every value before publishing.`:"No player names were matched. Try one player per line with labeled stats.");
+    setScanMessage(matched?"Interpreted "+matched+" player rows. Review every value before publishing.":"No player names were matched. Try one player per line with labeled stats.");
   };
   const scan=async()=>{`
       );
