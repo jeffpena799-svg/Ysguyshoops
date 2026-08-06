@@ -1,6 +1,7 @@
 import { isAuthorized } from "./_auth.js";
 
-const MAX_IMAGE_LENGTH = 1_600_000;
+// Allows a compressed phone photo while staying below the serverless request limit.
+const MAX_IMAGE_LENGTH = 4_000_000;
 
 export default async function handler(request, response) {
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed" });
@@ -79,7 +80,7 @@ export default async function handler(request, response) {
 
     const result = await openaiResponse.json();
     if (!openaiResponse.ok) {
-      console.error("scan-stats-openai", openaiResponse.status);
+      console.error("scan-stats-openai", openaiResponse.status, result?.error?.code || result?.error?.type || "unknown");
       return response.status(502).json({ error: "The picture could not be read right now" });
     }
     const outputText = result.output_text || result.output?.flatMap(item => item.content || []).find(item => item.type === "output_text")?.text;
@@ -89,16 +90,20 @@ export default async function handler(request, response) {
       if (!roster.some(player => player.id === line.playerId) || unique.has(line.playerId)) return false;
       unique.add(line.playerId);
       return true;
-    }).map(line => ({
-      playerId: line.playerId,
-      gp: Math.max(0, Math.round(Number(line.gp) || 0)),
-      wins: Math.max(0, Math.round(Number(line.wins) || 0)),
-      pts: Math.max(0, Math.round(Number(line.pts) || 0)),
-      reb: Math.max(0, Math.round(Number(line.reb) || 0)),
-      ast: Math.max(0, Math.round(Number(line.ast) || 0)),
-      turnovers: Math.max(0, Math.round(Number(line.turnovers) || 0)),
-      uncertain: Boolean(line.uncertain),
-    }));
+    }).map(line => {
+      const gp = Math.max(0, Math.round(Number(line.gp) || 0));
+      const wins = Math.min(gp, Math.max(0, Math.round(Number(line.wins) || 0)));
+      return {
+        playerId: line.playerId,
+        gp,
+        wins,
+        pts: Math.max(0, Math.round(Number(line.pts) || 0)),
+        reb: Math.max(0, Math.round(Number(line.reb) || 0)),
+        ast: Math.max(0, Math.round(Number(line.ast) || 0)),
+        turnovers: Math.max(0, Math.round(Number(line.turnovers) || 0)),
+        uncertain: Boolean(line.uncertain),
+      };
+    });
     return response.status(200).json({ lines, warning: String(parsed.warning || "") });
   } catch (error) {
     console.error("scan-stats", error);
