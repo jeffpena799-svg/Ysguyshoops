@@ -16,13 +16,10 @@ export function version632Feature(): Plugin {
 
       let code = source;
 
-      code = replaceRequired(
-        code,
-        'const initialBranding:LeagueBranding = { logoUrl:"/ys-guys-mark.jpeg", wordmark:"Y\'S GUYS", tagline:"League Universe" };',
-        'const initialBranding:LeagueBranding = { logoUrl:"/ys-guys-logo.svg", wordmark:"Y\'S GUYS", tagline:"League Universe" };'
-      );
-
-      code = code.split('branding.logoUrl||initialBranding.logoUrl').join('branding.logoUrl&&branding.logoUrl!=="/ys-guys-mark.jpeg"?branding.logoUrl:initialBranding.logoUrl');
+      // Version 6.5 owns the league branding replacement. Keep every rendered
+      // league mark pinned to the official asset while preserving the 6.3.2
+      // rating and eligibility improvements below.
+      code = code.split('branding.logoUrl||initialBranding.logoUrl').join('"/ys-guys-logo.svg"');
 
       code = replaceRequired(
         code,
