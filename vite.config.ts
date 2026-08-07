@@ -5,7 +5,7 @@ import { version64Feature } from "./version64.plugin";
 import { version65Feature } from "./version65.plugin";
 import { version66Feature } from "./version66b.plugin";
 import { version66NavigationFix } from "./version66navfix.plugin";
-import { version66Dashboard } from "./version66dashboard.plugin";
+import { version66Dashboard } from "./version66dashboard2.plugin";
 
 function replaceRequired(source: string, search: string, replacement: string): string {
   if (!source.includes(search)) {
