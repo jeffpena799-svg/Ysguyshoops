@@ -8,7 +8,7 @@ function replaceRequired(source:string,search:string,replacement:string){
 function replaceBetween(source:string,start:string,end:string,replacement:string){
   const from=source.indexOf(start);if(from<0)throw new Error(`Version 6.5 patch could not find start: ${start}`);
   const to=source.indexOf(end,from);if(to<0)throw new Error(`Version 6.5 patch could not find end: ${end}`);
-  return source.slice(0,from)+replacement+source.slice(to);
+  return source.slice(0,from)+replacement+source.slice(to+end.length);
 }
 
 export function version65Feature():Plugin{
