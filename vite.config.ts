@@ -5,6 +5,7 @@ import { version64Feature } from "./version64.plugin";
 import { version65Feature } from "./version65.plugin";
 import { version66Feature } from "./version66b.plugin";
 import { version66NavigationFix } from "./version66navfix.plugin";
+import { version66Dashboard } from "./version66dashboard.plugin";
 
 function replaceRequired(source: string, search: string, replacement: string): string {
   if (!source.includes(search)) {
@@ -46,4 +47,4 @@ function closeSundayFeature(): Plugin {
   };
 }
 
-export default defineConfig({plugins:[closeSundayFeature(),version632Feature(),version64Feature(),version65Feature(),version66Feature(),version66NavigationFix(),react()]});
+export default defineConfig({plugins:[closeSundayFeature(),version632Feature(),version64Feature(),version65Feature(),version66Feature(),version66NavigationFix(),version66Dashboard(),react()]});
