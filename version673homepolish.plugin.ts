@@ -18,15 +18,17 @@ export function version673HomePolish():Plugin{
         );
         const brandPattern=/<img className="brandMark"[^>]*\/>/;
         if(!brandPattern.test(code)) throw new Error("Version 6.7.3 Home polish could not find the app brand image");
-        code=code.replace(brandPattern,'<img className="brandMark" src="/ys-guys-logo.svg" alt="Y\'s Guys official brushstroke Y" style={{objectFit:"contain"}}/>');
+        code=code.replace(brandPattern,'<img className="brandMark" src="/ys-guys-official-logo.svg" alt="Y\'s Guys official brushstroke Y" style={{objectFit:"contain"}}/>');
         return {code,map:null};
       }
       if(id.endsWith("/src/components/HomeDashboard.tsx")){
-        let code=source;
-        code=replaceRequired(code,
-          '<section><small>OVERALL</small><strong>{overall(myPlayer)}</strong><h3>{myPlayer.name}</h3></section>',
-          '<section><h3>{myPlayer.name}</h3></section>'
-        );
+        let code=source.replaceAll('src="/ys-guys-logo.svg"','src="/ys-guys-official-logo.svg"');
+        if(code.includes('<section><small>OVERALL</small><strong>{overall(myPlayer)}</strong><h3>{myPlayer.name}</h3></section>')){
+          code=code.replace(
+            '<section><small>OVERALL</small><strong>{overall(myPlayer)}</strong><h3>{myPlayer.name}</h3></section>',
+            '<section><h3>{myPlayer.name}</h3></section>'
+          );
+        }
         code=code.replace('grid-template-columns:auto auto 1fr auto','grid-template-columns:auto 1fr auto');
         return {code,map:null};
       }
