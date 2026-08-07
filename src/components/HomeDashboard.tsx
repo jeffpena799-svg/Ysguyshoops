@@ -1,7 +1,13 @@
 import React, { useMemo, useState } from "react";
 
-type PlayerLike={id:string;name:string;wins?:number;losses?:number;pts?:number;reb?:number;ast?:number;photoUrl?:string;overallOverride?:number};
-type RunLike={id:string;date:string;startTime?:string;location?:string;deadline?:string;notes?:string;rsvps?:Array<{playerId:string;status:string}>};
+type PlayerLike={
+  id:string;name:string;wins?:number;losses?:number;pts?:number;reb?:number;ast?:number;
+  photoUrl?:string;overallOverride?:number
+};
+type RunLike={
+  id:string;date:string;startTime?:string;location?:string;deadline?:string;notes?:string;
+  rsvps?:Array<{playerId:string;status:string}>
+};
 type NewsLike={id:string;headline:string;summary?:string;category?:string;imageUrl?:string};
 type GameLike={id:string;date?:string;title?:string;teamA?:string;teamB?:string;scoreA?:number;scoreB?:number;mvp?:string};
 type RankingLike={playerId?:string;playerName:string;rank:number|null;movement:number|null;dnp?:boolean};
@@ -14,53 +20,245 @@ type Props={
   onChoosePlayer:()=>void; onOpenPlayer:(player:PlayerLike)=>void; onNavigate:(view:string)=>void;
 };
 
-function safeNumber(value:unknown){return typeof value==="number"&&Number.isFinite(value)?value:0}
-function initials(name?:string){return (name||"YG").split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join("").toUpperCase()}
-function overall(player?:PlayerLike){if(!player)return 0;if(typeof player.overallOverride==="number")return player.overallOverride;const games=safeNumber(player.wins)+safeNumber(player.losses);return Math.max(60,Math.min(99,Math.round(70+safeNumber(player.wins)*.7+safeNumber(player.pts)/Math.max(1,games)*.8)))}
+function safeNumber(value:unknown){
+  return typeof value==="number"&&Number.isFinite(value)?value:0;
+}
+function initials(name?:string){
+  return (name||"YG").split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join("").toUpperCase();
+}
+function overall(player?:PlayerLike){
+  if(!player)return 0;
+  if(typeof player.overallOverride==="number")return player.overallOverride;
+  const games=safeNumber(player.wins)+safeNumber(player.losses);
+  return Math.max(60,Math.min(99,Math.round(70+safeNumber(player.wins)*.7+safeNumber(player.pts)/Math.max(1,games)*.8)));
+}
 
 export default function HomeDashboard(props:Props){
-  const {players=[],nextRun,featuredStory,publishedNews=[],latestFinal,rankings=[],myPlayer,activeVote,formatDate,onRsvp,onChoosePlayer,onOpenPlayer,onNavigate}=props;
+  const {
+    players=[],nextRun,featuredStory,publishedNews=[],myPlayer,activeVote,
+    formatDate,onRsvp,onChoosePlayer,onOpenPlayer,onNavigate
+  }=props;
   const [saving,setSaving]=useState<string>("");
   const [message,setMessage]=useState("");
   const confirmed=useMemo(()=>nextRun?.rsvps?.filter(item=>item.status==="going")??[],[nextRun]);
   const responded=nextRun?.rsvps?.length??0;
-  const confirmedPlayers=confirmed.map(item=>players.find(player=>player.id===item.playerId)).filter(Boolean) as PlayerLike[];
-  const scoringLeader=useMemo(()=>[...players].sort((a,b)=>safeNumber(b.pts)-safeNumber(a.pts))[0],[players]);
-  const winLeader=useMemo(()=>[...players].sort((a,b)=>safeNumber(b.wins)-safeNumber(a.wins))[0],[players]);
-  const topRankings=rankings.filter(item=>!item.dnp&&item.rank!==null).slice(0,5);
+  const confirmedPlayers=confirmed
+    .map(item=>players.find(player=>player.id===item.playerId))
+    .filter(Boolean) as PlayerLike[];
+
   const submit=async(status:"going"|"maybe"|"out")=>{
     if(!nextRun)return;
     if(!myPlayer){onChoosePlayer();return;}
-    try{setSaving(status);setMessage("");await onRsvp(nextRun.id,status);setMessage("Response saved");}
-    catch(error){setMessage(error instanceof Error?error.message:"Could not save response");}
-    finally{setSaving("");}
+    try{
+      setSaving(status);
+      setMessage("");
+      await onRsvp(nextRun.id,status);
+      setMessage("Response saved");
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Could not save response");
+    }finally{
+      setSaving("");
+    }
   };
-  return <div className="safeDash66"><style>{css}</style>
-    <header className="safeDashHeader"><div className="safeIdentity"><img src="/ys-guys-logo.svg" alt="Y's Guys"/><div><h1>Y'S GUYS HOOPS</h1><p>SUMMER 2026 · LEAGUE DASHBOARD</p></div></div><div className="safeHeaderActions"><button onClick={()=>onNavigate("players")} aria-label="Players">⌕</button><button onClick={()=>onNavigate("voting")} aria-label="Voting">♧{activeVote&&<b>1</b>}</button>{myPlayer&&<button className="safeAvatar" onClick={()=>onOpenPlayer(myPlayer)}>{myPlayer.photoUrl?<img src={myPlayer.photoUrl} alt={myPlayer.name}/>:initials(myPlayer.name)}</button>}</div></header>
 
-    <section className="safeTopGrid">
-      <article className="safeSundayCard">
-        <img className="safeWatermark" src="/ys-guys-logo.svg" alt=""/>
-        <div className="safeSundayTop"><span>NEXT SUNDAY</span><strong>{confirmed.length}<small> / {players.length}</small></strong></div>
+  const quickLinks=[
+    {label:"Sunday",copy:"Availability and run details",icon:"✓",view:"attendance"},
+    {label:"My Player",copy:"Profile, Overall and career",icon:"◎",view:"my-player"},
+    {label:"Around the League",copy:"Results, rankings and voting",icon:"▦",view:"community"},
+    {label:"Hall & History",copy:"Records, awards and legacy",icon:"♛",view:"hof"},
+  ];
+
+  const navigateQuick=(view:string)=>{
+    if(view==="my-player"){
+      if(myPlayer)onOpenPlayer(myPlayer);
+      else onChoosePlayer();
+      return;
+    }
+    onNavigate(view);
+  };
+
+  return <div className="homeClean67"><style>{css}</style>
+    <header className="homeCleanHeader">
+      <div className="homeCleanIdentity">
+        <img src="/ys-guys-logo.svg" alt="Y's Guys"/>
+        <div><h1>Y'S GUYS</h1><p>THE LEAGUE IS ALIVE</p></div>
+      </div>
+      <div className="homeCleanActions">
+        {activeVote&&<button onClick={()=>onNavigate("voting")} aria-label="Active league vote">1</button>}
+        <button className="homeCleanAvatar" onClick={()=>myPlayer?onOpenPlayer(myPlayer):onChoosePlayer()} aria-label="My Player">
+          {myPlayer?.photoUrl?<img src={myPlayer.photoUrl} alt={myPlayer.name}/>:initials(myPlayer?.name)}
+        </button>
+      </div>
+    </header>
+
+    <main className="homeCleanMain">
+      <article className="homeSunday">
+        <img className="homeWatermark" src="/ys-guys-logo.svg" alt=""/>
+        <div className="homeSundayTop">
+          <span>NEXT SUNDAY</span>
+          <strong>{confirmed.length}<small> / {players.length} IN</small></strong>
+        </div>
         <h2>{nextRun?formatDate(nextRun.date):"No Sunday scheduled"}</h2>
-        {nextRun?<><div className="safeMeta"><b>◷ {nextRun.startTime||"TBD"}</b><b>◆ {nextRun.location||"Location TBD"}</b></div><p className="safeConfirmed">{confirmed.length} PLAYERS CONFIRMED</p><div className="safeFaces">{confirmedPlayers.slice(0,7).map(player=>player.photoUrl?<img key={player.id} src={player.photoUrl} alt={player.name}/>:<span key={player.id}>{initials(player.name)}</span>)}{confirmed.length>7&&<i>+{confirmed.length-7}</i>}</div><div className="safeRsvp"><button disabled={!!saving} onClick={()=>submit("going")}>✓ {saving==="going"?"SAVING…":"I'M IN"}</button><button disabled={!!saving} onClick={()=>submit("maybe")}>? {saving==="maybe"?"SAVING…":"MAYBE"}</button><button disabled={!!saving} onClick={()=>submit("out")}>× {saving==="out"?"SAVING…":"I'M OUT"}</button></div><small className="safeDeadline">{message||`${Math.max(0,players.length-responded)} PLAYERS HAVE NOT RESPONDED`}</small></>:<p className="safeEmpty">The Commissioner can schedule the next run.</p>}
+        {nextRun?<>
+          <div className="homeMeta">
+            <b>◷ {nextRun.startTime||"TBD"}</b>
+            <b>◆ {nextRun.location||"Location TBD"}</b>
+          </div>
+          {nextRun.notes&&<p className="homeNote">{nextRun.notes}</p>}
+          <div className="homeFaces">
+            {confirmedPlayers.slice(0,8).map(player=>player.photoUrl
+              ?<img key={player.id} src={player.photoUrl} alt={player.name}/>
+              :<span key={player.id}>{initials(player.name)}</span>)}
+            {confirmed.length>8&&<i>+{confirmed.length-8}</i>}
+          </div>
+          <div className="homeRsvp">
+            <button disabled={!!saving} onClick={()=>submit("going")}>✓ {saving==="going"?"SAVING…":"I'M IN"}</button>
+            <button disabled={!!saving} onClick={()=>submit("maybe")}>? {saving==="maybe"?"SAVING…":"MAYBE"}</button>
+            <button disabled={!!saving} onClick={()=>submit("out")}>× {saving==="out"?"SAVING…":"I'M OUT"}</button>
+          </div>
+          <small className="homeResponse">{message||`${Math.max(0,players.length-responded)} players have not responded`}</small>
+        </>:<p className="homeEmpty">The Commissioner can schedule the next run.</p>}
       </article>
 
-      <article className="safeNewsCard"><div className="safeTitle"><b>WEEKLY NEWS</b><button onClick={()=>onNavigate("community")}>VIEW ALL →</button></div>{featuredStory?<><div className="safeFeature" style={featuredStory.imageUrl?{backgroundImage:`linear-gradient(90deg,rgba(3,13,29,.95),rgba(3,13,29,.22)),url(${featuredStory.imageUrl})`}:undefined}><span>TOP STORY</span><h2>{featuredStory.headline}</h2><p>{featuredStory.summary||""}</p></div><div className="safeNewsLinks">{publishedNews.slice(1,3).map(story=><button key={story.id} onClick={()=>onNavigate("community")}><small>{story.category||"LEAGUE NEWS"}</small><b>{story.headline}</b><i>›</i></button>)}</div></>:<div className="safeEmpty">No published story yet.</div>}</article>
-    </section>
+      <article className="homeNews">
+        <div className="homeSectionTitle"><b>WEEKLY NEWS</b><button onClick={()=>onNavigate("community")}>VIEW ALL →</button></div>
+        {featuredStory?<>
+          <button className="homeFeature" onClick={()=>onNavigate("community")} style={featuredStory.imageUrl?{
+            backgroundImage:`linear-gradient(90deg,rgba(3,13,29,.96),rgba(3,13,29,.28)),url(${featuredStory.imageUrl})`
+          }:undefined}>
+            <span>{featuredStory.category||"TOP STORY"}</span>
+            <h2>{featuredStory.headline}</h2>
+            <p>{featuredStory.summary||""}</p>
+          </button>
+          {publishedNews.length>1&&<div className="homeNewsLinks">
+            {publishedNews.slice(1,3).map(story=><button key={story.id} onClick={()=>onNavigate("community")}>
+              <small>{story.category||"LEAGUE NEWS"}</small><b>{story.headline}</b><i>›</i>
+            </button>)}
+          </div>}
+        </>:<div className="homeEmpty">No published story yet.</div>}
+      </article>
 
-    <section className="safePulse"><h3>⌁ LEAGUE<br/>PULSE</h3><div><span>SCORING LEADER</span><b>{scoringLeader?.name||"—"}</b><small>{safeNumber(scoringLeader?.pts)} total points</small></div><div><span>WINS LEADER</span><b>{winLeader?.name||"—"}</b><small>{safeNumber(winLeader?.wins)} recorded wins</small></div><div><span>LATEST RESULT</span><b>{latestFinal?`${safeNumber(latestFinal.scoreA)}–${safeNumber(latestFinal.scoreB)}`:"—"}</b><small>{latestFinal?.title||"No final recorded"}</small></div><div><span>ACTIVE VOTE</span><b>{activeVote?"OPEN":"NONE"}</b><small>{activeVote?.title||"No vote active"}</small></div></section>
+      <section className="homeQuick">
+        <div className="homeSectionTitle"><b>QUICK ACCESS</b><span>EXPLORE THE LEAGUE</span></div>
+        <div className="homeQuickGrid">
+          {quickLinks.map(link=><button key={link.label} onClick={()=>navigateQuick(link.view)}>
+            <i>{link.icon}</i><span><b>{link.label}</b><small>{link.copy}</small></span><strong>›</strong>
+          </button>)}
+        </div>
+      </section>
 
-    <section className="safeBottomGrid">
-      <article className="safeResult"><div className="safeTitle"><b>LATEST RESULT</b><span>{latestFinal?.date||"—"}</span></div>{latestFinal?<><div className="safeScore"><div><small>{latestFinal.teamA||"TEAM A"}</small><strong>{safeNumber(latestFinal.scoreA)}</strong></div><b>FINAL</b><div><small>{latestFinal.teamB||"TEAM B"}</small><strong>{safeNumber(latestFinal.scoreB)}</strong></div></div><p>POTD: {latestFinal.mvp||"Not recorded"}</p><button onClick={()=>onNavigate("games")}>VIEW RESULTS →</button></>:<div className="safeEmpty">No final result recorded.</div>}</article>
-      <article className="safeRankings"><div className="safeTitle"><b>POWER RANKINGS</b><span>TOP 5</span></div><div className="safeRankingRows">{topRankings.length?topRankings.map(entry=>{const player=players.find(item=>item.id===entry.playerId);return <button key={`${entry.playerName}-${entry.rank}`} onClick={()=>player&&onOpenPlayer(player)}><strong>{entry.rank}</strong>{player?.photoUrl?<img src={player.photoUrl} alt={player.name}/>:<span>{initials(entry.playerName)}</span>}<b>{entry.playerName}</b><i>{!entry.movement?"—":entry.movement>0?`↑${entry.movement}`:`↓${Math.abs(entry.movement)}`}</i></button>}):<div className="safeEmpty">No published rankings.</div>}</div><button className="safeFull" onClick={()=>onNavigate("leaders")}>VIEW FULL RANKINGS →</button></article>
-      <article className="safePlayer"><div className="safeTitle"><b>YOUR SNAPSHOT</b><span>CAREER OVERVIEW</span></div>{myPlayer?<><div className="safePlayerTop">{myPlayer.photoUrl?<img src={myPlayer.photoUrl} alt={myPlayer.name}/>:<div>{initials(myPlayer.name)}</div>}<section><small>OVERALL</small><strong>{overall(myPlayer)}</strong><b>{myPlayer.name}</b></section></div><div className="safeStats"><span><b>{safeNumber(myPlayer.wins)}-{safeNumber(myPlayer.losses)}</b>RECORD</span><span><b>{safeNumber(myPlayer.pts)}</b>PTS</span><span><b>{safeNumber(myPlayer.reb)}</b>REB</span><span><b>{safeNumber(myPlayer.ast)}</b>AST</span></div><button onClick={()=>onOpenPlayer(myPlayer)}>VIEW FULL PROFILE →</button></>:<button className="safeChoose" onClick={onChoosePlayer}>CHOOSE MY PLAYER</button>}</article>
-    </section>
-  </div>
+      <article className="homePlayer">
+        <div className="homeSectionTitle"><b>MY PLAYER</b><span>PERSONAL SNAPSHOT</span></div>
+        {myPlayer?<button className="homePlayerInner" onClick={()=>onOpenPlayer(myPlayer)}>
+          {myPlayer.photoUrl?<img src={myPlayer.photoUrl} alt={myPlayer.name}/>:<div>{initials(myPlayer.name)}</div>}
+          <section><small>OVERALL</small><strong>{overall(myPlayer)}</strong><h3>{myPlayer.name}</h3></section>
+          <div className="homePlayerStats">
+            <span><b>{safeNumber(myPlayer.wins)}-{safeNumber(myPlayer.losses)}</b>RECORD</span>
+            <span><b>{safeNumber(myPlayer.pts)}</b>PTS</span>
+            <span><b>{safeNumber(myPlayer.reb)}</b>REB</span>
+            <span><b>{safeNumber(myPlayer.ast)}</b>AST</span>
+          </div>
+          <i>VIEW PROFILE →</i>
+        </button>:<button className="homeChoose" onClick={onChoosePlayer}>CHOOSE MY PLAYER</button>}
+      </article>
+    </main>
+  </div>;
 }
 
 const css=`
-.safeDash66{display:grid;gap:14px;color:#f6f0df}.safeDashHeader{display:flex;justify-content:space-between;align-items:center;padding:0 2px 8px}.safeIdentity{display:flex;align-items:center;gap:15px}.safeIdentity img{width:72px;height:72px;object-fit:contain;border:1px solid #d5b45b;border-radius:15px;padding:7px;background:#071a36}.safeIdentity h1{margin:0;color:white;font-size:clamp(28px,4vw,54px);font-style:italic}.safeIdentity p{margin:4px 0 0;color:#d5b45b;font-weight:900;letter-spacing:.12em}.safeHeaderActions{display:flex;gap:9px}.safeHeaderActions>button{position:relative;width:48px;height:48px;border:1px solid #8e7947;border-radius:50%;background:#071a36;color:white;font-size:22px}.safeHeaderActions button>b{position:absolute;right:-3px;top:-3px;background:#df3931;border-radius:50%;font-size:10px;width:19px;height:19px;display:grid;place-items:center}.safeAvatar{overflow:hidden;font-size:11px;font-weight:900}.safeAvatar img{width:100%;height:100%;object-fit:cover}.safeTopGrid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(330px,.95fr);gap:14px}.safeSundayCard,.safeNewsCard,.safePulse,.safeBottomGrid>article{border:1px solid rgba(213,180,91,.62);border-radius:18px;background:linear-gradient(145deg,#0b2a53,#06162f);box-shadow:0 16px 42px rgba(0,0,0,.25)}.safeSundayCard{position:relative;overflow:hidden;padding:24px;min-height:410px}.safeWatermark{position:absolute;right:-20px;bottom:-110px;width:420px;opacity:.06}.safeSundayCard>*:not(.safeWatermark){position:relative}.safeSundayTop{display:flex;justify-content:space-between;align-items:center}.safeSundayTop>span,.safeFeature>span{background:linear-gradient(90deg,#d5a93a,#8d6718);color:#07152d;font-weight:1000;padding:6px 12px}.safeSundayTop strong{color:#52d37d;font-size:30px}.safeSundayTop small{color:white;font-size:16px}.safeSundayCard h2{font-size:clamp(34px,5vw,62px);font-style:italic;text-transform:uppercase;color:white;margin:16px 0 9px}.safeMeta{display:flex;gap:28px;color:#e9edf3}.safeConfirmed{color:#53d47c;font-weight:1000}.safeFaces{display:flex;margin:15px 0}.safeFaces img,.safeFaces span{width:42px;height:42px;border-radius:50%;border:2px solid #d5b45b;margin-right:-6px;object-fit:cover;background:#12335d;display:grid;place-items:center;font-size:11px;font-weight:900}.safeFaces i{margin-left:13px;width:42px;height:42px;border:1px solid #d5b45b;border-radius:50%;display:grid;place-items:center;font-style:normal}.safeRsvp{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}.safeRsvp button{min-height:62px;border-radius:10px;color:white;font-weight:1000;font-size:16px;border:1px solid rgba(255,255,255,.2)}.safeRsvp button:nth-child(1){background:linear-gradient(#19aa50,#08742f)}.safeRsvp button:nth-child(2){background:linear-gradient(#e9a916,#ad6d00)}.safeRsvp button:nth-child(3){background:linear-gradient(#d5202c,#850514)}.safeRsvp button:disabled{opacity:.65}.safeDeadline{display:block;text-align:center;color:#cbd4e0;margin-top:12px;letter-spacing:.06em}.safeNewsCard{padding:16px;display:grid;grid-template-rows:auto 1fr auto;min-height:410px}.safeTitle{display:flex;justify-content:space-between;align-items:center;color:#d5b45b}.safeTitle button,.safeTitle span{border:0;background:none;color:#e9edf3}.safeFeature{margin-top:10px;border-radius:13px;padding:18px;min-height:230px;background:linear-gradient(135deg,#123c68,#07162f);background-size:cover;background-position:center;display:flex;flex-direction:column;justify-content:flex-end}.safeFeature h2{font-size:clamp(24px,3vw,39px);line-height:1;text-transform:uppercase;font-style:italic;margin:12px 0 7px;color:white}.safeFeature p{margin:0;color:#d4dce7;max-width:75%}.safeNewsLinks{display:grid;gap:7px;margin-top:8px}.safeNewsLinks button{display:grid;grid-template-columns:1fr auto;text-align:left;border:1px solid rgba(213,180,91,.25);background:rgba(255,255,255,.035);color:white;border-radius:10px;padding:10px}.safeNewsLinks small{color:#d5b45b}.safeNewsLinks b{grid-column:1}.safeNewsLinks i{grid-column:2;grid-row:1/3;font-size:24px;color:#d5b45b}.safePulse{display:grid;grid-template-columns:145px repeat(4,1fr);overflow:hidden}.safePulse h3{margin:0;padding:18px;color:#d5b45b;display:grid;place-items:center;text-align:center}.safePulse>div{padding:18px;border-left:1px solid rgba(213,180,91,.23);display:flex;flex-direction:column;justify-content:center}.safePulse span{font-size:9px;color:#d5b45b;letter-spacing:.1em}.safePulse b{color:white;margin:5px 0}.safePulse small{color:#9eafc2}.safeBottomGrid{display:grid;grid-template-columns:1fr 1fr 1.06fr;gap:14px}.safeBottomGrid>article{padding:16px;min-height:270px}.safeScore{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;text-align:center;margin:24px 0}.safeScore div{display:grid}.safeScore small{color:#d5b45b;font-weight:1000}.safeScore strong{font-size:52px;color:white}.safeScore>b{padding:10px;border:1px solid rgba(213,180,91,.4);border-radius:9px}.safeResult p{text-align:center}.safeResult>button,.safeFull,.safePlayer>button{width:100%;border:1px solid rgba(213,180,91,.3);border-radius:9px;background:rgba(255,255,255,.035);color:#d5b45b;padding:11px;font-weight:1000}.safeRankingRows{display:grid;margin:9px 0}.safeRankingRows>button{display:grid;grid-template-columns:24px 34px 1fr auto;align-items:center;gap:8px;border:0;border-top:1px solid rgba(213,180,91,.14);background:transparent;color:white;padding:7px 0;text-align:left}.safeRankingRows img,.safeRankingRows>button>span{width:29px;height:29px;border-radius:50%;object-fit:cover;background:#173a64;display:grid;place-items:center;font-size:9px}.safeRankingRows i{font-style:normal;color:#64db87}.safePlayerTop{display:flex;gap:16px;align-items:center;margin:24px 0}.safePlayerTop>img,.safePlayerTop>div{width:100px;height:100px;border-radius:50%;object-fit:cover;border:2px solid #d5b45b;background:#173a64;display:grid;place-items:center;font-size:24px}.safePlayerTop section{display:grid}.safePlayerTop section small{color:#aab8ca}.safePlayerTop section strong{font-size:60px;line-height:1;color:white}.safeStats{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid rgba(213,180,91,.2);border-radius:10px;margin-bottom:10px}.safeStats span{padding:10px 4px;text-align:center;font-size:9px}.safeStats b{display:block;color:white;font-size:18px}.safeEmpty{display:grid;place-items:center;min-height:130px;color:#9eafc2;text-align:center}.safeChoose{margin-top:70px}.safeDash66 button{cursor:pointer;transition:transform .14s ease}.safeDash66 button:active{transform:scale(.985)}
-@media(max-width:1000px){.safeTopGrid{grid-template-columns:1fr}.safeBottomGrid{grid-template-columns:1fr 1fr}.safePlayer{grid-column:1/-1}.safePulse{grid-template-columns:1fr 1fr}.safePulse h3{grid-column:1/-1}.safePulse>div{border-top:1px solid rgba(213,180,91,.2)}}
-@media(max-width:650px){.safeDashHeader{align-items:flex-start}.safeIdentity img{width:52px;height:52px}.safeIdentity h1{font-size:25px}.safeIdentity p{font-size:9px}.safeHeaderActions>button{width:40px;height:40px}.safeTopGrid,.safeBottomGrid{grid-template-columns:1fr}.safePlayer{grid-column:auto}.safeSundayCard,.safeNewsCard{min-height:0;padding:18px}.safeSundayCard h2{font-size:36px}.safeMeta{display:grid;gap:7px}.safeRsvp{grid-template-columns:1fr}.safePulse{grid-template-columns:1fr}.safePulse h3{grid-column:auto}.safePulse>div{border-left:0}.safeFeature{min-height:210px}.safeStats{grid-template-columns:repeat(2,1fr)}}
+.homeClean67{display:grid;gap:16px;color:#f6f0df}
+.homeClean67 button{font:inherit}
+.homeCleanHeader{display:flex;justify-content:space-between;align-items:center;padding:2px 2px 8px}
+.homeCleanIdentity{display:flex;align-items:center;gap:14px}
+.homeCleanIdentity img{width:66px;height:66px;object-fit:contain;border:1px solid #d5b45b;border-radius:15px;padding:7px;background:#071a36}
+.homeCleanIdentity h1{margin:0;color:white;font-size:clamp(27px,4vw,48px);font-style:italic;line-height:1}
+.homeCleanIdentity p{margin:6px 0 0;color:#d5b45b;font-size:11px;font-weight:900;letter-spacing:.17em}
+.homeCleanActions{display:flex;align-items:center;gap:10px}
+.homeCleanActions>button{width:48px;height:48px;border:1px solid #8e7947;border-radius:50%;background:#071a36;color:white;font-weight:900}
+.homeCleanActions>button:first-child:not(:last-child){background:#d5a93a;color:#07152d}
+.homeCleanAvatar{overflow:hidden}
+.homeCleanAvatar img{width:100%;height:100%;object-fit:cover}
+.homeCleanMain{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(330px,1fr);gap:16px;align-items:start}
+.homeSunday,.homeNews,.homeQuick,.homePlayer{border:1px solid rgba(213,180,91,.62);border-radius:20px;background:linear-gradient(145deg,#0b2a53,#06162f);box-shadow:0 16px 42px rgba(0,0,0,.25)}
+.homeSunday{position:relative;overflow:hidden;padding:26px;min-height:430px}
+.homeWatermark{position:absolute;right:-30px;bottom:-120px;width:440px;opacity:.055}
+.homeSunday>*:not(.homeWatermark){position:relative}
+.homeSundayTop{display:flex;justify-content:space-between;align-items:center}
+.homeSundayTop>span,.homeFeature>span{background:linear-gradient(90deg,#d5a93a,#8d6718);color:#07152d;font-weight:1000;padding:7px 13px;border-radius:3px}
+.homeSundayTop strong{color:#52d37d;font-size:30px}
+.homeSundayTop small{color:#d8e0ea;font-size:12px;letter-spacing:.08em}
+.homeSunday h2{font-size:clamp(36px,5vw,64px);font-style:italic;text-transform:uppercase;color:white;margin:20px 0 10px;line-height:.95}
+.homeMeta{display:flex;flex-wrap:wrap;gap:22px;color:#e9edf3}
+.homeNote{max-width:640px;color:#bbc7d6;margin:18px 0 0}
+.homeFaces{display:flex;margin:22px 0 18px}
+.homeFaces img,.homeFaces span{width:44px;height:44px;border-radius:50%;border:2px solid #d5b45b;margin-right:-6px;object-fit:cover;background:#12335d;display:grid;place-items:center;font-size:11px;font-weight:900}
+.homeFaces i{margin-left:14px;width:44px;height:44px;border:1px solid #d5b45b;border-radius:50%;display:grid;place-items:center;font-style:normal}
+.homeRsvp{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:18px}
+.homeRsvp button{min-height:66px;border-radius:11px;color:white;font-weight:1000;font-size:17px;border:1px solid rgba(255,255,255,.2)}
+.homeRsvp button:nth-child(1){background:linear-gradient(#19aa50,#08742f)}
+.homeRsvp button:nth-child(2){background:linear-gradient(#e9a916,#ad6d00)}
+.homeRsvp button:nth-child(3){background:linear-gradient(#d5202c,#850514)}
+.homeRsvp button:disabled{opacity:.65}
+.homeResponse{display:block;text-align:center;color:#cbd4e0;margin-top:13px;letter-spacing:.04em}
+.homeNews{padding:18px;min-height:430px}
+.homeSectionTitle{display:flex;justify-content:space-between;align-items:center;color:#d5b45b;gap:12px}
+.homeSectionTitle button,.homeSectionTitle span{border:0;background:none;color:#d7dfeb;font-size:12px}
+.homeFeature{width:100%;margin-top:14px;border:0;border-radius:14px;padding:20px;min-height:270px;background:linear-gradient(135deg,#123c68,#07162f);background-size:cover;background-position:center;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;text-align:left;color:white}
+.homeFeature h2{font-size:clamp(25px,3vw,40px);line-height:1;text-transform:uppercase;font-style:italic;margin:14px 0 9px;color:white}
+.homeFeature p{margin:0;color:#d4dce7;max-width:80%}
+.homeNewsLinks{display:grid;gap:8px;margin-top:10px}
+.homeNewsLinks button{display:grid;grid-template-columns:1fr auto;text-align:left;border:1px solid rgba(213,180,91,.25);background:rgba(255,255,255,.035);color:white;border-radius:11px;padding:11px}
+.homeNewsLinks small{color:#d5b45b}
+.homeNewsLinks b{grid-column:1}
+.homeNewsLinks i{grid-column:2;grid-row:1/3;font-size:24px;color:#d5b45b}
+.homeQuick{grid-column:1/-1;padding:20px}
+.homeQuickGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
+.homeQuickGrid button{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;text-align:left;border:1px solid rgba(213,180,91,.28);border-radius:14px;background:rgba(255,255,255,.035);color:white;padding:17px;min-height:94px}
+.homeQuickGrid button>i{width:43px;height:43px;border-radius:50%;display:grid;place-items:center;background:#d5a93a;color:#07152d;font-style:normal;font-size:22px;font-weight:900}
+.homeQuickGrid span{display:grid;gap:4px}
+.homeQuickGrid small{color:#9eafc2;line-height:1.25}
+.homeQuickGrid strong{color:#d5b45b;font-size:24px}
+.homePlayer{grid-column:1/-1;padding:20px}
+.homePlayerInner{width:100%;display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:20px;border:0;background:transparent;color:white;text-align:left;padding:14px 0 0}
+.homePlayerInner>img,.homePlayerInner>div:first-child{width:88px;height:88px;border-radius:50%;border:2px solid #d5b45b;object-fit:cover;background:#12335d;display:grid;place-items:center;font-weight:900}
+.homePlayerInner section small{color:#9eafc2}
+.homePlayerInner section strong{display:block;color:white;font-size:42px;line-height:1}
+.homePlayerInner section h3{margin:5px 0 0}
+.homePlayerStats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.homePlayerStats span{text-align:center;color:#9eafc2;font-size:10px;letter-spacing:.06em}
+.homePlayerStats b{display:block;color:white;font-size:19px}
+.homePlayerInner>i{font-style:normal;color:#d5b45b;font-weight:900}
+.homeChoose{margin-top:16px;width:100%;min-height:64px;border:1px solid #d5b45b;border-radius:12px;background:#d5a93a;color:#07152d;font-weight:1000}
+.homeEmpty{min-height:150px;display:grid;place-items:center;color:#aab7c8;text-align:center}
+@media(max-width:980px){
+  .homeCleanMain{grid-template-columns:1fr}
+  .homeQuick,.homePlayer{grid-column:auto}
+  .homeQuickGrid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:640px){
+  .homeClean67{gap:12px}
+  .homeCleanHeader{padding:0 0 5px}
+  .homeCleanIdentity img{width:48px;height:48px;border-radius:12px}
+  .homeCleanIdentity h1{font-size:21px}
+  .homeCleanIdentity p{font-size:8px}
+  .homeCleanActions>button{width:44px;height:44px}
+  .homeSunday,.homeNews,.homeQuick,.homePlayer{border-radius:17px}
+  .homeSunday{padding:19px;min-height:0}
+  .homeSundayTop strong{font-size:23px}
+  .homeSunday h2{font-size:35px;margin-top:17px}
+  .homeMeta{display:grid;gap:8px}
+  .homeRsvp{gap:7px}
+  .homeRsvp button{min-height:58px;font-size:13px;padding:7px 3px}
+  .homeNews{min-height:0;padding:16px}
+  .homeFeature{min-height:250px}
+  .homeFeature p{max-width:100%}
+  .homeQuick{padding:16px}
+  .homeQuickGrid{grid-template-columns:1fr;gap:9px}
+  .homeQuickGrid button{min-height:78px;padding:13px}
+  .homePlayer{padding:16px}
+  .homePlayerInner{grid-template-columns:auto 1fr;gap:14px}
+  .homePlayerInner>img,.homePlayerInner>div:first-child{width:72px;height:72px}
+  .homePlayerStats{grid-column:1/-1}
+  .homePlayerInner>i{grid-column:1/-1;text-align:center;margin-top:4px}
+}
 `;
