@@ -16,10 +16,9 @@ export function version673HomePolish():Plugin{
           '<header className="topbar">',
           '<header className="topbar" style={{minHeight:0,paddingTop:8,paddingBottom:8}}>'
         );
-        code=replaceRequired(code,
-          '<img className="brandMark" src={branding.logoUrl||initialBranding.logoUrl} alt=""/>',
-          '<img className="brandMark" src="/ys-guys-logo.svg" alt="Y\'s Guys official brushstroke Y" style={{objectFit:"contain"}}/>'
-        );
+        const brandPattern=/<img className="brandMark"[^>]*\/>/;
+        if(!brandPattern.test(code)) throw new Error("Version 6.7.3 Home polish could not find the app brand image");
+        code=code.replace(brandPattern,'<img className="brandMark" src="/ys-guys-logo.svg" alt="Y\'s Guys official brushstroke Y" style={{objectFit:"contain"}}/>');
         return {code,map:null};
       }
       if(id.endsWith("/src/components/HomeDashboard.tsx")){
