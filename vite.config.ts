@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { version632Feature } from "./version632.plugin";
 import { version64Feature } from "./version64.plugin";
 import { version65Feature } from "./version65.plugin";
-import { version66Feature } from "./version66.plugin";
+import { version66Feature } from "./version66b.plugin";
 
 function replaceRequired(source: string, search: string, replacement: string): string {
   if (!source.includes(search)) {
