@@ -6,7 +6,7 @@ export function version671Readability():Plugin{
     enforce:"pre",
     transform(source,id){
       if(!id.endsWith("/src/App.tsx")) return null;
-      const marker='</style><button className="backButton" onClick={onBack}>← All profiles</button>';
+      const marker='`}</style><button className="backButton" onClick={onBack}>← All profiles</button>';
       if(!source.includes(marker)) throw new Error("Version 6.7.1 readability patch could not find the My Player style marker");
       const css=`
 .profilePanel .section h2,.profileGameLog .section h2,.careerBests .section h2,.legacyPanel .section h2,.myPlayerPerformance .section h2{color:#172033!important;font-weight:900!important}
@@ -25,7 +25,7 @@ export function version671Readability():Plugin{
 .legacyPanel .legacySummary span{color:#667085!important;background:#f7f8fa!important}
 .careerTimeline .careerTimelineList h3{color:#172033!important}.careerTimeline .careerTimelineList p{color:#667085!important}
 `;
-      return {code:source.replace(marker,`${css}</style><button className="backButton" onClick={onBack}>← All profiles</button>`),map:null};
+      return {code:source.replace(marker,`${css}\n\`}</style><button className="backButton" onClick={onBack}>← All profiles</button>`),map:null};
     }
   };
 }
