@@ -5,16 +5,29 @@ function required(source:string,search:string,replacement:string){
   return source.replace(search,replacement);
 }
 
+function replaceBetween(source:string,start:string,end:string,replacement:string){
+  const from=source.indexOf(start);
+  if(from<0)throw new Error(`Version 6.6 nav fix could not find start: ${start}`);
+  const to=source.indexOf(end,from);
+  if(to<0)throw new Error(`Version 6.6 nav fix could not find end: ${end}`);
+  return source.slice(0,from)+replacement+source.slice(to+end.length);
+}
+
 export function version66NavigationFix():Plugin{
   return {
     name:"ys-guys-version-6-6-navigation-fix",
-    enforce:"pre",
     transform(source,id){
       if(!id.endsWith("/src/App.tsx"))return null;
       let code=source;
-      code=required(code,
-        '      <Nav label="Home" icon="⌂" active={view==="home"} onClick={()=>go("home")}/><Nav label="Sunday" icon="✓" active={view==="attendance"} onClick={()=>go("attendance")}/><Nav label="Hall" icon="♛" active={view==="hof"} onClick={()=>go("hof")}/><Nav label="Profiles" icon="◎" active={["players","profile","compare"].includes(view)} onClick={()=>go("players")}/><Nav label="More" icon="•••" active={["more","community","timeline","voting","studio","rules","commissioner"].includes(view)} onClick={()=>go("more")}/>',
-        '      <Nav label="Home" icon="⌂" active={view==="home"} onClick={()=>go("home")}/><Nav label="My Player" icon="◎" active={["profile","compare"].includes(view)} onClick={()=>myPlayer?openProfile(myPlayer):setShowMyPlayerPicker(true)}/><Nav label="Around League" icon="◫" active={["attendance","community","voting","calendar","rules","games","players","leaders","season-stats","studio","more"].includes(view)} onClick={()=>go("community")}/><Nav label="Hall & History" icon="♛" active={["hof","timeline","awards","records","seasons"].includes(view)} onClick={()=>go("hof")}/>'
+      code=replaceBetween(code,
+        '    <nav className="bottomNav">',
+        '    </nav>',
+        `    <nav className="bottomNav">
+      <Nav label="Home" icon="⌂" active={view==="home"} onClick={()=>go("home")}/>
+      <Nav label="My Player" icon="◎" active={["profile","compare"].includes(view)} onClick={()=>myPlayer?openProfile(myPlayer):setShowMyPlayerPicker(true)}/>
+      <Nav label="Around League" icon="◫" active={["attendance","community","voting","calendar","rules","games","players","leaders","season-stats","studio","more"].includes(view)} onClick={()=>go("community")}/>
+      <Nav label="Hall & History" icon="♛" active={["hof","timeline","awards","records","seasons"].includes(view)} onClick={()=>go("hof")}/>
+    </nav>`
       );
       code=required(code,
         '.bottomNav button{width:min(130px,20%);',
