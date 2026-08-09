@@ -14,6 +14,7 @@ import { version681HallReadability } from "./version681hallreadability.plugin";
 import { version682HomeCleanup } from "./version682homecleanup.plugin";
 import { version682MyPlayerEditors } from "./version682myplayereditors.plugin";
 import { version684CommissionerFab } from "./version684commissionerfab.plugin";
+import { version685HomeCompact } from "./version685homecompact.plugin";
 
 function replaceRequired(source: string, search: string, replacement: string): string {
   if (!source.includes(search)) {
@@ -55,4 +56,4 @@ function closeSundayFeature(): Plugin {
   };
 }
 
-export default defineConfig({plugins:[closeSundayFeature(),version632Feature(),version64Feature(),version65Feature(),version66Feature(),version66NavigationFix(),version66HomeComponent(),version67MyPlayer(),version671Readability(),version673HomePolish(),version68AroundLeague(),version681HallReadability(),version682HomeCleanup(),version682MyPlayerEditors(),version684CommissionerFab(),react()]});
+export default defineConfig({plugins:[closeSundayFeature(),version632Feature(),version64Feature(),version65Feature(),version66Feature(),version66NavigationFix(),version66HomeComponent(),version67MyPlayer(),version671Readability(),version673HomePolish(),version68AroundLeague(),version681HallReadability(),version682HomeCleanup(),version682MyPlayerEditors(),version684CommissionerFab(),version685HomeCompact(),react()]});
