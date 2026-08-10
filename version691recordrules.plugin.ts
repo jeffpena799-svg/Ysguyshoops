@@ -1,0 +1,14 @@
+import type { Plugin } from "vite";
+
+export function version691RecordRules():Plugin{
+  return {name:"ys-guys-version-691-record-rules",enforce:"pre",transform(source,id){
+    if(!id.endsWith("/src/App.tsx"))return null;
+    let code=source;
+    const needle='  const weeklyMvp=(player:Player)=>(player.weeklyMvpCredits??[]).reduce((sum,item)=>sum+item.count,0);';
+    if(!code.includes(needle))throw new Error("Hall record rules anchor not found");
+    const insert=`  const weeklyMvp=(player:Player)=>(player.weeklyMvpCredits??[]).reduce((sum,item)=>sum+item.count,0);\n  const recordEligible=players.filter(player=>player.wins+player.losses>=20);\n  const recordLeader=(key:\"pts\"|\"reb\"|\"ast\"|\"wins\")=>[...recordEligible].sort((a,b)=>b[key]-a[key])[0];\n  const winPctLeader=[...recordEligible].sort((a,b)=>(b.wins/(b.wins+b.losses))-(a.wins/(a.wins+a.losses)))[0];\n  const sourceRecord=(label:string)=>records.find(record=>record.label.toLowerCase()===label.toLowerCase());\n  const defensiveRecord=sourceRecord(\"Most Blocks / Steals\")??sourceRecord(\"Most Blocks/Steals\")??sourceRecord(\"Most Blocks\")??sourceRecord(\"Most Steals\");\n  const officialRecords:RecordItem[]=[\n    {category:\"Career\",label:\"Most Points\",holder:recordLeader(\"pts\")?.name??\"—\",value:recordLeader(\"pts\")?String(recordLeader(\"pts\")!.pts):\"—\",date:\"Minimum 20 games played\"},\n    {category:\"Career\",label:\"Most Rebounds\",holder:recordLeader(\"reb\")?.name??\"—\",value:recordLeader(\"reb\")?String(recordLeader(\"reb\")!.reb):\"—\",date:\"Minimum 20 games played\"},\n    {category:\"Career\",label:\"Most Assists\",holder:recordLeader(\"ast\")?.name??\"—\",value:recordLeader(\"ast\")?String(recordLeader(\"ast\")!.ast):\"—\",date:\"Minimum 20 games played\"},\n    {category:\"Career\",label:\"Best Win Percentage\",holder:winPctLeader?.name??\"—\",value:winPctLeader?Math.round(winPctLeader.wins/(winPctLeader.wins+winPctLeader.losses)*100)+\"%\":\"—\",date:\"Minimum 20 games played\"},\n    {category:\"Career\",label:\"Most Wins\",holder:recordLeader(\"wins\")?.name??\"—\",value:recordLeader(\"wins\")?String(recordLeader(\"wins\")!.wins):\"—\",date:\"Minimum 20 games played\"},\n    defensiveRecord?{...defensiveRecord,category:\"Career\",label:\"Most Blocks / Steals\",date:defensiveRecord.date||\"Official recorded totals\"}:{category:\"Career\",label:\"Most Blocks / Steals\",holder:\"—\",value:\"—\",date:\"Awaiting recorded blocks / steals\"}\n  ];`;
+    code=code.replace(needle,insert);
+    code=code.replace('{records.map((record,index)=><article key={record.label+index}>','{officialRecords.map((record,index)=><article key={record.label+index}>');
+    return {code,map:null};
+  }};
+}
