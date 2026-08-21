@@ -1,4 +1,4 @@
-const CACHE = "ys-guys-v6-3-1";
+const CACHE = "ys-guys-v7-1-2";
 const SHELL = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
