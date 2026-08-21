@@ -24,7 +24,7 @@ jobs:
       - run: npm run build
       - name: Package deployment source
         run: |
-          tar --exclude=.git --exclude=node_modules --exclude=dist -czf ys-guys-source.tgz .
+          tar --exclude=.git --exclude=node_modules --exclude=dist --exclude=ys-guys-source.tgz -czf ys-guys-source.tgz .
       - uses: actions/upload-artifact@v4
         with:
           name: ys-guys-source
