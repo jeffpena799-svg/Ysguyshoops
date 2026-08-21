@@ -23,6 +23,7 @@ import { version691RecordRules } from "./version691recordrules.plugin";
 import { version692WeeklyMvp } from "./version692weeklymvp.plugin";
 import { version7Foundation } from "./version7.plugin";
 import { version7Components } from "./version7components.plugin";
+import { version7ViewPrepare, version7ViewRestore } from "./version7viewbridge.plugin";
 
 function replaceRequired(source: string, search: string, replacement: string): string {
   if (!source.includes(search)) throw new Error(`Close Sunday patch could not find expected source: ${search.slice(0, 90)}`);
@@ -48,4 +49,4 @@ function closeSundayFeature(): Plugin {
   }};
 }
 
-export default defineConfig({plugins:[closeSundayFeature(),version632Feature(),version64Feature(),version65Feature(),version66Feature(),version66NavigationFix(),version66HomeComponent(),version67MyPlayer(),version671Readability(),version673HomePolish(),version68AroundLeague(),version681HallReadability(),version682HomeCleanup(),version682MyPlayerEditors(),version684CommissionerFab(),version685HomeCompact(),version686RemovePlayerTimeline(),version687MyPlayerCompact(),version688MyPlayerPolish(),version69HallHistory(),version691RecordRules(),version692WeeklyMvp(),version7Foundation(),version7Components(),react()]});
+export default defineConfig({plugins:[closeSundayFeature(),version632Feature(),version64Feature(),version65Feature(),version66Feature(),version66NavigationFix(),version66HomeComponent(),version67MyPlayer(),version671Readability(),version673HomePolish(),version68AroundLeague(),version681HallReadability(),version682HomeCleanup(),version682MyPlayerEditors(),version684CommissionerFab(),version685HomeCompact(),version686RemovePlayerTimeline(),version687MyPlayerCompact(),version688MyPlayerPolish(),version69HallHistory(),version691RecordRules(),version692WeeklyMvp(),version7ViewPrepare(),version7Foundation(),version7ViewRestore(),version7Components(),react()]});
