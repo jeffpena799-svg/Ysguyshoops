@@ -1,6 +1,5 @@
 import { isAuthorized } from "./_auth.js";
 
-// Allows a compressed phone photo while staying below the serverless request limit.
 const MAX_IMAGE_LENGTH = 4_000_000;
 
 export default async function handler(request, response) {
@@ -26,55 +25,28 @@ export default async function handler(request, response) {
   try {
     const openaiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
       body: JSON.stringify({
         model: "gpt-4.1-mini",
-        input: [{
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: `Read this Y's Guys weekly basketball totals sheet. Match only players from this roster: ${JSON.stringify(roster)}. Extract whole-day totals for GP, wins, points, rebounds, assists, and turnovers. Do not guess unreadable values. Omit absent players. Set uncertain true when any value or name match needs human review.`,
-            },
-            { type: "input_image", image_url: imageDataUrl, detail: "high" },
-          ],
-        }],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "weekly_basketball_stats",
-            strict: true,
-            schema: {
-              type: "object",
-              additionalProperties: false,
-              required: ["lines", "warning"],
+        input: [{ role: "user", content: [
+          { type: "input_text", text: `Read this Y's Guys weekly basketball totals sheet. Match only players from this roster: ${JSON.stringify(roster)}. Extract whole-day totals for GP, wins, points, rebounds, assists, steals, blocks, and turnovers. If steals or blocks are not present on the source, use 0 rather than guessing. Do not guess unreadable values. Omit absent players. Set uncertain true when any value or name match needs human review.` },
+          { type: "input_image", image_url: imageDataUrl, detail: "high" },
+        ] }],
+        text: { format: { type: "json_schema", name: "weekly_basketball_stats", strict: true, schema: {
+          type: "object", additionalProperties: false, required: ["lines", "warning"], properties: {
+            warning: { type: "string" },
+            lines: { type: "array", items: { type: "object", additionalProperties: false,
+              required: ["playerId", "gp", "wins", "pts", "reb", "ast", "steals", "blocks", "turnovers", "uncertain"],
               properties: {
-                warning: { type: "string" },
-                lines: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    additionalProperties: false,
-                    required: ["playerId", "gp", "wins", "pts", "reb", "ast", "turnovers", "uncertain"],
-                    properties: {
-                      playerId: { type: "string", enum: roster.map(player => player.id) },
-                      gp: { type: "integer", minimum: 0 },
-                      wins: { type: "integer", minimum: 0 },
-                      pts: { type: "integer", minimum: 0 },
-                      reb: { type: "integer", minimum: 0 },
-                      ast: { type: "integer", minimum: 0 },
-                      turnovers: { type: "integer", minimum: 0 },
-                      uncertain: { type: "boolean" },
-                    },
-                  },
-                },
+                playerId: { type: "string", enum: roster.map(player => player.id) },
+                gp: { type: "integer", minimum: 0 }, wins: { type: "integer", minimum: 0 },
+                pts: { type: "integer", minimum: 0 }, reb: { type: "integer", minimum: 0 }, ast: { type: "integer", minimum: 0 },
+                steals: { type: "integer", minimum: 0 }, blocks: { type: "integer", minimum: 0 }, turnovers: { type: "integer", minimum: 0 },
+                uncertain: { type: "boolean" },
               },
-            },
+            } },
           },
-        },
+        } } },
       }),
     });
 
@@ -88,18 +60,17 @@ export default async function handler(request, response) {
     const unique = new Set();
     const lines = (Array.isArray(parsed.lines) ? parsed.lines : []).filter(line => {
       if (!roster.some(player => player.id === line.playerId) || unique.has(line.playerId)) return false;
-      unique.add(line.playerId);
-      return true;
+      unique.add(line.playerId); return true;
     }).map(line => {
       const gp = Math.max(0, Math.round(Number(line.gp) || 0));
       const wins = Math.min(gp, Math.max(0, Math.round(Number(line.wins) || 0)));
       return {
-        playerId: line.playerId,
-        gp,
-        wins,
+        playerId: line.playerId, gp, wins,
         pts: Math.max(0, Math.round(Number(line.pts) || 0)),
         reb: Math.max(0, Math.round(Number(line.reb) || 0)),
         ast: Math.max(0, Math.round(Number(line.ast) || 0)),
+        steals: Math.max(0, Math.round(Number(line.steals) || 0)),
+        blocks: Math.max(0, Math.round(Number(line.blocks) || 0)),
         turnovers: Math.max(0, Math.round(Number(line.turnovers) || 0)),
         uncertain: Boolean(line.uncertain),
       };
