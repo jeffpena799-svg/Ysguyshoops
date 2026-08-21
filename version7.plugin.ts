@@ -17,44 +17,20 @@ export function version7Foundation():Plugin{
     if(!id.endsWith("/src/App.tsx"))return null;
     let code=source;
 
-    code=replaceRequired(code,
-      'wins: number; losses: number; pts: number; reb: number; ast: number; turnovers: number;',
-      'wins: number; losses: number; pts: number; reb: number; ast: number; turnovers: number; steals?:number; blocks?:number;',"Player stats");
-    code=replaceRequired(code,
-      'type StatLine = { playerId:string; team:string; pts:number; reb:number; ast:number; turnovers:number };',
-      'type StatLine = { playerId:string; team:string; pts:number; reb:number; ast:number; turnovers:number; steals?:number; blocks?:number };',"StatLine");
-    code=replaceRequired(code,
-      'id:string; headline:string; summary:string; category:string; date:string;\n  imageUrl?:string; featured:boolean; published:boolean;',
-      'id:string; headline:string; summary:string; body?:string; category:string; date:string;\n  imageUrl?:string; featured:boolean; published:boolean;',"NewsStory");
-    code=replaceRequired(code,
-      'playerId:string; gp:number; wins:number; pts:number; reb:number; ast:number; turnovers:number;',
-      'playerId:string; gp:number; wins:number; pts:number; reb:number; ast:number; turnovers:number; steals?:number; blocks?:number;',"SundayStatLine");
-    code=replaceRequired(code,
-      'type PlayerStatBaseline = Record<string,{wins:number;losses:number;pts:number;reb:number;ast:number;turnovers:number}>;',
-      'type PlayerStatBaseline = Record<string,{wins:number;losses:number;pts:number;reb:number;ast:number;turnovers:number;steals?:number;blocks?:number}>;',"PlayerStatBaseline");
-    code=replaceRequired(code,
-      'type View = "home" | "attendance" | "community" | "games" | "players" | "profile" | "compare" | "leaders" | "more" | "records" | "awards" | "seasons" | "calendar" | "rules" | "hof" | "timeline" | "voting" | "studio" | "commissioner";',
-      'type View = "home" | "attendance" | "community" | "news" | "games" | "players" | "profile" | "compare" | "leaders" | "more" | "records" | "awards" | "seasons" | "calendar" | "rules" | "hof" | "timeline" | "voting" | "studio" | "commissioner";',"View type");
+    code=replaceRequired(code,'wins: number; losses: number; pts: number; reb: number; ast: number; turnovers: number;','wins: number; losses: number; pts: number; reb: number; ast: number; turnovers: number; steals?:number; blocks?:number;',"Player stats");
+    code=replaceRequired(code,'type StatLine = { playerId:string; team:string; pts:number; reb:number; ast:number; turnovers:number };','type StatLine = { playerId:string; team:string; pts:number; reb:number; ast:number; turnovers:number; steals?:number; blocks?:number };',"StatLine");
+    code=replaceRequired(code,'id:string; headline:string; summary:string; category:string; date:string;\n  imageUrl?:string; featured:boolean; published:boolean;','id:string; headline:string; summary:string; body?:string; category:string; date:string;\n  imageUrl?:string; featured:boolean; published:boolean;',"NewsStory");
+    code=replaceRequired(code,'playerId:string; gp:number; wins:number; pts:number; reb:number; ast:number; turnovers:number;','playerId:string; gp:number; wins:number; pts:number; reb:number; ast:number; turnovers:number; steals?:number; blocks?:number;',"SundayStatLine");
+    code=replaceRequired(code,'type PlayerStatBaseline = Record<string,{wins:number;losses:number;pts:number;reb:number;ast:number;turnovers:number}>;','type PlayerStatBaseline = Record<string,{wins:number;losses:number;pts:number;reb:number;ast:number;turnovers:number;steals?:number;blocks?:number}>;',"PlayerStatBaseline");
+    code=replaceRequired(code,'type View = "home" | "attendance" | "community" | "games" | "players" | "profile" | "compare" | "leaders" | "more" | "records" | "awards" | "seasons" | "calendar" | "rules" | "hof" | "timeline" | "voting" | "studio" | "commissioner";','type View = "home" | "attendance" | "community" | "news" | "games" | "players" | "profile" | "compare" | "leaders" | "more" | "records" | "awards" | "seasons" | "calendar" | "rules" | "hof" | "timeline" | "voting" | "studio" | "commissioner";',"View type");
 
-    code=replaceRequired(code,
-      'return Object.fromEntries(players.map(player=>[player.id,{wins:player.wins,losses:player.losses,pts:player.pts,reb:player.reb,ast:player.ast,turnovers:player.turnovers}]));',
-      'return Object.fromEntries(players.map(player=>[player.id,{wins:player.wins,losses:player.losses,pts:player.pts,reb:player.reb,ast:player.ast,turnovers:player.turnovers,steals:player.steals??0,blocks:player.blocks??0}]));',"stat baseline creation");
-    code=replaceRequired(code,
-      'const base=baseline[player.id]??{wins:player.wins,losses:player.losses,pts:player.pts,reb:player.reb,ast:player.ast,turnovers:player.turnovers};',
-      'const base=baseline[player.id]??{wins:player.wins,losses:player.losses,pts:player.pts,reb:player.reb,ast:player.ast,turnovers:player.turnovers,steals:player.steals??0,blocks:player.blocks??0};',"ledger baseline");
-    code=replaceRequired(code,
-      'turnovers:base.turnovers+lines.reduce((sum,line)=>sum+line.turnovers,0),',
-      'turnovers:base.turnovers+lines.reduce((sum,line)=>sum+line.turnovers,0),\n      steals:(base.steals??0)+lines.reduce((sum,line)=>sum+(line.steals??0),0),\n      blocks:(base.blocks??0)+lines.reduce((sum,line)=>sum+(line.blocks??0),0),',"Sunday ledger defense");
+    code=replaceRequired(code,'return Object.fromEntries(players.map(player=>[player.id,{wins:player.wins,losses:player.losses,pts:player.pts,reb:player.reb,ast:player.ast,turnovers:player.turnovers}]));','return Object.fromEntries(players.map(player=>[player.id,{wins:player.wins,losses:player.losses,pts:player.pts,reb:player.reb,ast:player.ast,turnovers:player.turnovers,steals:player.steals??0,blocks:player.blocks??0}]));',"stat baseline creation");
+    code=replaceRequired(code,'const base=baseline[player.id]??{wins:player.wins,losses:player.losses,pts:player.pts,reb:player.reb,ast:player.ast,turnovers:player.turnovers};','const base=baseline[player.id]??{wins:player.wins,losses:player.losses,pts:player.pts,reb:player.reb,ast:player.ast,turnovers:player.turnovers,steals:player.steals??0,blocks:player.blocks??0};',"ledger baseline");
+    code=replaceRequired(code,'turnovers:base.turnovers+lines.reduce((sum,line)=>sum+line.turnovers,0),','turnovers:base.turnovers+lines.reduce((sum,line)=>sum+line.turnovers,0),\n      steals:(base.steals??0)+lines.reduce((sum,line)=>sum+(line.steals??0),0),\n      blocks:(base.blocks??0)+lines.reduce((sum,line)=>sum+(line.blocks??0),0),',"Sunday ledger defense");
 
-    code=replaceRequired(code,
-      'const [showMyPlayerPicker,setShowMyPlayerPicker]=useState(false);',
-      'const [showMyPlayerPicker,setShowMyPlayerPicker]=useState(false);\n  const [selectedNewsId,setSelectedNewsId]=useState("");',"news state");
-    code=replaceRequired(code,
-      'const openProfile=(player:Player)=>{setSelected(player);go("profile");};',
-      'const openProfile=(player:Player)=>{setSelected(player);go("profile");};\n  const openNews=(storyId?:string)=>{setSelectedNewsId(storyId||featuredStory?.id||publishedNews[0]?.id||"");go("news");};',"open news");
-    code=replaceRequired(code,
-      'onNavigate={(target:any)=>go(target)}',
-      'onNavigate={(target:any)=>go(target)}\n        onOpenNews={(storyId:string)=>openNews(storyId)}',"Home news handler");
+    code=replaceRequired(code,'const [showMyPlayerPicker,setShowMyPlayerPicker]=useState(false);','const [showMyPlayerPicker,setShowMyPlayerPicker]=useState(false);\n  const [selectedNewsId,setSelectedNewsId]=useState("");',"news state");
+    code=replaceRequired(code,'const openProfile=(player:Player)=>{setSelected(player);go("profile");};','const openProfile=(player:Player)=>{setSelected(player);go("profile");};\n  const openNews=(storyId?:string)=>{setSelectedNewsId(storyId||featuredStory?.id||publishedNews[0]?.id||"");go("news");};',"open news");
+    code=replaceRequired(code,'onNavigate={(target:any)=>go(target)}','onNavigate={(target:any)=>go(target)}\n        onOpenNews={(storyId:string)=>openNews(storyId)}',"Home news handler");
 
     const newsView=`      {view==="news" && <LeagueNews news={publishedNews} selectedId={selectedNewsId} onSelect={setSelectedNewsId} onBack={()=>go("home")}/>}\n\n`;
     const newsAnchor='      {view==="calendar" && <CalendarView games={games} runs={runs}/>}';
@@ -73,15 +49,9 @@ export function version7Foundation():Plugin{
     const ni=code.indexOf(insertBefore);if(ni<0)throw new Error("Version 7 could not find NewsManager insert point");
     code=code.slice(0,ni)+leagueNewsFunction+code.slice(ni);
 
-    code=replaceRequired(code,
-      'const empty:NewsStory={id:"",headline:"",summary:"",category:"League News",date:new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}),imageUrl:"",featured:false,published:true};',
-      'const empty:NewsStory={id:"",headline:"",summary:"",body:"",category:"League News",date:new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}),imageUrl:"",featured:false,published:true};',"news draft");
-    code=replaceRequired(code,
-      'const story={...draft,id:draft.id||makeId("story"),headline:draft.headline.trim(),summary:draft.summary.trim(),category:draft.category.trim()||"League News"};',
-      'const story={...draft,id:draft.id||makeId("story"),headline:draft.headline.trim(),summary:draft.summary.trim(),body:(draft.body||draft.summary).trim(),category:draft.category.trim()||"League News"};',"news save");
-    code=replaceRequired(code,
-      '<label className="wide">Story summary<textarea required maxLength={700} value={draft.summary} onChange={e=>setDraft({...draft,summary:e.target.value})} placeholder="Tell the community the story…"/></label>',
-      '<label className="wide">Home-page summary<textarea required maxLength={700} value={draft.summary} onChange={e=>setDraft({...draft,summary:e.target.value})} placeholder="Short preview for Home…"/></label><label className="wide">Full article<textarea maxLength={6000} value={draft.body??""} onChange={e=>setDraft({...draft,body:e.target.value})} placeholder="Write the complete League News story here. If left blank, the summary will be used as the article."/></label>',"news article field");
+    code=replaceRequired(code,'const empty:NewsStory={id:"",headline:"",summary:"",category:"League News",date:new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}),imageUrl:"",featured:false,published:true};','const empty:NewsStory={id:"",headline:"",summary:"",body:"",category:"League News",date:new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}),imageUrl:"",featured:false,published:true};',"news draft");
+    code=replaceRequired(code,'const story={...draft,id:draft.id||makeId("story"),headline:draft.headline.trim(),summary:draft.summary.trim(),category:draft.category.trim()||"League News"};','const story={...draft,id:draft.id||makeId("story"),headline:draft.headline.trim(),summary:draft.summary.trim(),body:(draft.body||draft.summary).trim(),category:draft.category.trim()||"League News"};',"news save");
+    code=replaceRequired(code,'<label className="wide">Story summary<textarea required maxLength={700} value={draft.summary} onChange={e=>setDraft({...draft,summary:e.target.value})} placeholder="Tell the community the story…"/></label>','<label className="wide">Home-page summary<textarea required maxLength={700} value={draft.summary} onChange={e=>setDraft({...draft,summary:e.target.value})} placeholder="Short preview for Home…"/></label><label className="wide">Full article<textarea maxLength={6000} value={draft.body??""} onChange={e=>setDraft({...draft,body:e.target.value})} placeholder="Write the complete League News story here. If left blank, the summary will be used as the article."/></label>',"news article field");
 
     const rankingFunction=`function PowerRankingManager({rankings,players,onChange}:{rankings:PowerRankingSnapshot[];players:Player[];onChange:(next:PowerRankingSnapshot[])=>void}){
   const latest=rankings[0]??initialRankings[0];
@@ -96,32 +66,20 @@ export function version7Foundation():Plugin{
     const used=new Set<string>();const matched:RankingEntry[]=[];const missed:string[]=[];
     raw.forEach(line=>{const cleaned=line.replace(/^#?\\s*\\d+\\s*[.)\\-:]?\\s*/,"").replace(/\\s+[—–-].*$/,"").trim();const key=normalize(cleaned);const player=players.find(item=>!used.has(item.id)&&(normalize(item.name)===key||normalize(item.nickname||"")===key||normalize(item.name).includes(key)||key.includes(normalize(item.name))));if(player){used.add(player.id);matched.push({playerId:player.id,playerName:player.name,rank:matched.length+1,movement:0,dnp:false,reason:"Commissioner ranking published."})}else missed.push(line)});
     const remainder=players.filter(player=>!used.has(player.id)).map(player=>({playerId:player.id,playerName:player.name,rank:null,movement:0,dnp:true,reason:"DNP"} as RankingEntry));
-    setEntries([...matched,...remainder]);setMessage(missed.length?`Matched ${matched.length}. Check unmatched: ${missed.join(", ")}`:`Matched all ${matched.length} ranked players. Review the preview, then publish.`);
+    setEntries([...matched,...remainder]);setMessage(missed.length?("Matched "+matched.length+". Check unmatched: "+missed.join(", ")):("Matched all "+matched.length+" ranked players. Review the preview, then publish."));
   };
-  const publish=()=>{const ranked=entries.filter(entry=>!entry.dnp);if(!ranked.length)return setMessage("Add at least one ranked player.");const previous=new Map(latest.entries.filter(item=>item.playerId&&item.rank).map(item=>[item.playerId!,item.rank!]));let rank=0;const publishedEntries=entries.map(entry=>{if(entry.dnp)return {...entry,rank:null,movement:0,reason:"DNP"};rank++;const old=entry.playerId?previous.get(entry.playerId):undefined;return {...entry,rank,movement:old?old-rank:0,reason:entry.reason||"Commissioner ranking published."}});const published:PowerRankingSnapshot={id:makeId("power"),week,date,publishedAt:new Date().toISOString(),entries:publishedEntries};onChange([published,...rankings]);setWeek(value=>value+1);setMessage(`Week ${week} rankings published.`)};
+  const publish=()=>{const ranked=entries.filter(entry=>!entry.dnp);if(!ranked.length)return setMessage("Add at least one ranked player.");const previous=new Map(latest.entries.filter(item=>item.playerId&&item.rank).map(item=>[item.playerId!,item.rank!]));let rank=0;const publishedEntries=entries.map(entry=>{if(entry.dnp)return {...entry,rank:null,movement:0,reason:"DNP"};rank++;const old=entry.playerId?previous.get(entry.playerId):undefined;return {...entry,rank,movement:old?old-rank:0,reason:entry.reason||"Commissioner ranking published."}});const published:PowerRankingSnapshot={id:makeId("power"),week,date,publishedAt:new Date().toISOString(),entries:publishedEntries};onChange([published,...rankings]);setWeek(value=>value+1);setMessage("Week "+week+" rankings published.")};
   return <section className="adminCard"><Section eyebrow="VERSION 7 · ONE-PASTE PUBLISHER" title="Power Rankings"/><p>Paste the complete ranking in order. Player names are matched to the roster, movement is calculated from the previous published board, and the old ranking remains preserved.</p><div className="formGrid"><label>Week<input type="number" value={week} onChange={event=>setWeek(Number(event.target.value))}/></label><label>Ranking date<input type="date" value={date} onChange={event=>setDate(event.target.value)}/></label><label className="wide">Paste rankings<textarea className="rankingPaste" value={paste} onChange={event=>setPaste(event.target.value)} placeholder={"1. Steve\\n2. Paul Peters\\n3. Vic\\n4. Ty"}/></label></div><div className="formActions"><button className="primary" type="button" onClick={importRanking}>Build ranking preview</button></div>{message&&<p className="rankingImportMessage">{message}</p>}<div className="rankingEditor rankingPreview">{entries.map((entry,index)=><article key={entry.playerId}><strong>{entry.dnp?"DNP":entries.slice(0,index+1).filter(item=>!item.dnp).length}</strong><span><b>{entry.playerName}</b><textarea value={entry.reason} onChange={event=>patch(index,{reason:event.target.value})} placeholder="Optional ranking note"/></span><label><input type="checkbox" checked={entry.dnp} onChange={event=>patch(index,{dnp:event.target.checked,rank:event.target.checked?null:1})}/> DNP</label><div><button disabled={index===0} onClick={()=>move(index,-1)}>↑</button><button disabled={index===entries.length-1} onClick={()=>move(index,1)}>↓</button></div></article>)}</div><button className="primary" onClick={publish}>Publish Week {week} rankings</button></section>;
 }`;
     code=replaceFunction(code,"PowerRankingManager",rankingFunction);
 
-    code=replaceRequired(code,
-      'const blankLines=()=>players.map(player=>({playerId:player.id,gp:0,wins:0,pts:0,reb:0,ast:0,turnovers:0,included:false}));',
-      'const blankLines=()=>players.map(player=>({playerId:player.id,gp:0,wins:0,pts:0,reb:0,ast:0,turnovers:0,steals:0,blocks:0,included:false}));',"blank weekly lines");
+    code=replaceRequired(code,'const blankLines=()=>players.map(player=>({playerId:player.id,gp:0,wins:0,pts:0,reb:0,ast:0,turnovers:0,included:false}));','const blankLines=()=>players.map(player=>({playerId:player.id,gp:0,wins:0,pts:0,reb:0,ast:0,turnovers:0,steals:0,blocks:0,included:false}));',"blank weekly lines");
     code=code.replaceAll('{playerId:player.id,gp:0,wins:0,pts:0,reb:0,ast:0,turnovers:0,included:false}','{playerId:player.id,gp:0,wins:0,pts:0,reb:0,ast:0,turnovers:0,steals:0,blocks:0,included:false}');
-    code=replaceRequired(code,
-      'if([line.pts,line.reb,line.ast,line.turnovers].some(value=>value>500))',
-      'if([line.pts,line.reb,line.ast,line.turnovers,line.steals??0,line.blocks??0].some(value=>value>500))',"weekly validation");
-    code=replaceRequired(code,
-      'turnovers:Math.max(0,player.turnovers-(oldLine?.turnovers??0)+(newLine?.turnovers??0)),',
-      'turnovers:Math.max(0,player.turnovers-(oldLine?.turnovers??0)+(newLine?.turnovers??0)),steals:Math.max(0,(player.steals??0)-(oldLine?.steals??0)+(newLine?.steals??0)),blocks:Math.max(0,(player.blocks??0)-(oldLine?.blocks??0)+(newLine?.blocks??0)),',"weekly preview defense");
-    code=replaceRequired(code,
-      '<div className="weeklyStatsTable"><div className="weeklyStatsHead"><b>Use</b><b>Player</b><b>GP</b><b>W</b><b>PTS</b><b>REB</b><b>AST</b><b>TO</b></div>',
-      '<div className="weeklyStatsTable weeklyStatsTableV7"><div className="weeklyStatsHead"><b>Use</b><b>Player</b><b>GP</b><b>W</b><b>PTS</b><b>REB</b><b>AST</b><b>STL</b><b>BLK</b><b>TO</b></div>',"weekly headers");
-    code=replaceRequired(code,
-      '(["gp","wins","pts","reb","ast","turnovers"] as const)',
-      '(["gp","wins","pts","reb","ast","steals","blocks","turnovers"] as const)',"weekly inputs");
-    code=replaceRequired(code,
-      '<span>TO {before.turnovers} → <strong>{after.turnovers}</strong></span><span>OVR',
-      '<span>STL {before.steals??0} → <strong>{after.steals??0}</strong></span><span>BLK {before.blocks??0} → <strong>{after.blocks??0}</strong></span><span>TO {before.turnovers} → <strong>{after.turnovers}</strong></span><span>OVR',"preview defense stats");
+    code=replaceRequired(code,'if([line.pts,line.reb,line.ast,line.turnovers].some(value=>value>500))','if([line.pts,line.reb,line.ast,line.turnovers,line.steals??0,line.blocks??0].some(value=>value>500))',"weekly validation");
+    code=replaceRequired(code,'turnovers:Math.max(0,player.turnovers-(oldLine?.turnovers??0)+(newLine?.turnovers??0)),','turnovers:Math.max(0,player.turnovers-(oldLine?.turnovers??0)+(newLine?.turnovers??0)),steals:Math.max(0,(player.steals??0)-(oldLine?.steals??0)+(newLine?.steals??0)),blocks:Math.max(0,(player.blocks??0)-(oldLine?.blocks??0)+(newLine?.blocks??0)),',"weekly preview defense");
+    code=replaceRequired(code,'<div className="weeklyStatsTable"><div className="weeklyStatsHead"><b>Use</b><b>Player</b><b>GP</b><b>W</b><b>PTS</b><b>REB</b><b>AST</b><b>TO</b></div>','<div className="weeklyStatsTable weeklyStatsTableV7"><div className="weeklyStatsHead"><b>Use</b><b>Player</b><b>GP</b><b>W</b><b>PTS</b><b>REB</b><b>AST</b><b>STL</b><b>BLK</b><b>TO</b></div>',"weekly headers");
+    code=replaceRequired(code,'(["gp","wins","pts","reb","ast","turnovers"] as const)','(["gp","wins","pts","reb","ast","steals","blocks","turnovers"] as const)',"weekly inputs");
+    code=replaceRequired(code,'<span>TO {before.turnovers} → <strong>{after.turnovers}</strong></span><span>OVR','<span>STL {before.steals??0} → <strong>{after.steals??0}</strong></span><span>BLK {before.blocks??0} → <strong>{after.blocks??0}</strong></span><span>TO {before.turnovers} → <strong>{after.turnovers}</strong></span><span>OVR',"preview defense stats");
 
     const careerBest=`function CareerBestSection({sessions}:{sessions:{session:SundaySession;line:SundayStatLine}[]}){
   const categories=[["Points","pts"],["Rebounds","reb"],["Assists","ast"],["Steals","steals"],["Blocks","blocks"],["Wins","wins"]] as const;
@@ -134,9 +92,7 @@ export function version7Foundation():Plugin{
     const newLog='<section className="profilePanel profileGameLog"><Section eyebrow="CAREER LOG" title="Sunday Sessions"/>{playerSessions.length?<><div className="logHead logHeadV7"><b>Sunday</b><span>W-L</span><span>PTS</span><span>REB</span><span>AST</span><span>STL</span><span>BLK</span></div>{playerSessions.map(({session,line})=><div className="logRow logRowV7" key={session.id}><div><b>{localDate(session.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</b><small>{line.gp} games played</small></div><span>{line.wins}-{Math.max(0,line.gp-line.wins)}</span><span>{line.pts}</span><span>{line.reb}</span><span>{line.ast}</span><span>{line.steals??0}</span><span>{line.blocks??0}</span></div>)}</>:<div className="empty">Published Sunday Sessions will appear here automatically.</div>}</section>';
     code=replaceRequired(code,oldLog,newLog,"My Player Career Log");
 
-    code=replaceRequired(code,
-      '{numberField("wins")}{numberField("losses")}{numberField("pts")}{numberField("reb")}{numberField("ast")}{numberField("turnovers")}',
-      '{numberField("wins")}{numberField("losses")}{numberField("pts")}{numberField("reb")}{numberField("ast")}<label>Steals<input min="0" type="number" value={draft.steals??0} onChange={e=>setDraft({...draft,steals:Number(e.target.value)})}/></label><label>Blocks<input min="0" type="number" value={draft.blocks??0} onChange={e=>setDraft({...draft,blocks:Number(e.target.value)})}/></label>{numberField("turnovers")}',"Player manager defense fields");
+    code=replaceRequired(code,'{numberField("wins")}{numberField("losses")}{numberField("pts")}{numberField("reb")}{numberField("ast")}{numberField("turnovers")}','{numberField("wins")}{numberField("losses")}{numberField("pts")}{numberField("reb")}{numberField("ast")}<label>Steals<input min="0" type="number" value={draft.steals??0} onChange={e=>setDraft({...draft,steals:Number(e.target.value)})}/></label><label>Blocks<input min="0" type="number" value={draft.blocks??0} onChange={e=>setDraft({...draft,blocks:Number(e.target.value)})}/></label>{numberField("turnovers")}',"Player manager defense fields");
 
     code=code.replace('const defensiveRecord=sourceRecord("Most Blocks / Steals")??sourceRecord("Most Blocks/Steals")??sourceRecord("Most Blocks")??sourceRecord("Most Steals");','const stealsLeader=[...recordEligible].sort((a,b)=>(b.steals??0)-(a.steals??0))[0];const blocksLeader=[...recordEligible].sort((a,b)=>(b.blocks??0)-(a.blocks??0))[0];');
     code=code.replace('defensiveRecord?{...defensiveRecord,category:"Career",label:"Most Blocks / Steals",date:defensiveRecord.date||"Official recorded totals"}:{category:"Career",label:"Most Blocks / Steals",holder:"—",value:"—",date:"Awaiting recorded blocks / steals"}','{category:"Career",label:"Most Steals",holder:stealsLeader?.name??"—",value:stealsLeader?String(stealsLeader.steals??0):"—",date:"Minimum 20 games played"},{category:"Career",label:"Most Blocks",holder:blocksLeader?.name??"—",value:blocksLeader?String(blocksLeader.blocks??0):"—",date:"Minimum 20 games played"}');
