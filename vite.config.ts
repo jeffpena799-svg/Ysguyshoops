@@ -18,6 +18,7 @@ import { version685HomeCompact } from "./version685homecompact.plugin";
 import { version686RemovePlayerTimeline } from "./version686removeplayertimeline.plugin";
 import { version687MyPlayerCompact } from "./version687myplayercompact.plugin";
 import { version688MyPlayerPolish } from "./version688myplayerpolish.plugin";
+import { commissionerRecalibration } from "./commissionerRecalibration.plugin";
 
 function replaceRequired(source: string, search: string, replacement: string): string {
   if (!source.includes(search)) {
@@ -59,4 +60,4 @@ function closeSundayFeature(): Plugin {
   };
 }
 
-export default defineConfig({plugins:[closeSundayFeature(),version632Feature(),version64Feature(),version65Feature(),version66Feature(),version66NavigationFix(),version66HomeComponent(),version67MyPlayer(),version671Readability(),version673HomePolish(),version68AroundLeague(),version681HallReadability(),version682HomeCleanup(),version682MyPlayerEditors(),version684CommissionerFab(),version685HomeCompact(),version686RemovePlayerTimeline(),version687MyPlayerCompact(),version688MyPlayerPolish(),react()]});
+export default defineConfig({plugins:[closeSundayFeature(),version632Feature(),version64Feature(),version65Feature(),version66Feature(),version66NavigationFix(),version66HomeComponent(),version67MyPlayer(),version671Readability(),version673HomePolish(),version68AroundLeague(),version681HallReadability(),version682HomeCleanup(),version682MyPlayerEditors(),version684CommissionerFab(),version685HomeCompact(),version686RemovePlayerTimeline(),version687MyPlayerCompact(),version688MyPlayerPolish(),commissionerRecalibration(),react()]});
