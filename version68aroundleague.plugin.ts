@@ -74,12 +74,18 @@ export function version68AroundLeague():Plugin{
 .atlLeaderStrip small{color:#d8bc74;font-size:9px;font-weight:1000;letter-spacing:.12em}
 .atlLeaderStrip strong{align-self:end;color:white;font-size:43px;line-height:1}
 .atlLeaderStrip span{color:#cbd6e3;font-size:13px;font-weight:900}
-.atlTableTitle{margin-top:5px}
+.atlStatsPanel{width:min(1320px,calc(100vw - 300px));justify-self:center}
+.atlStatsToolbar{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:end;gap:16px;margin-top:5px;padding:16px 4px 0}
+.atlStatsToolbar small{color:#d5a93a;font-size:9px;font-weight:1000;letter-spacing:.14em}
+.atlStatsToolbar h2{margin:3px 0 0;color:#142033;font-size:28px}
+.atlStatsToolbar>span{color:#7a8595;font-size:11px}
+.atlStatMode{display:grid;grid-template-columns:1fr 1fr;overflow:hidden;border:1px solid #c9d2dd;border-radius:999px;background:#f4f6f8;padding:3px}
+.atlStatMode button{min-width:104px;padding:8px 12px;border:0;border-radius:999px;background:transparent;color:#687589;font-size:9px;font-weight:1000;letter-spacing:.08em}
+.atlStatMode button.active{background:#0a2d5e;color:white;box-shadow:0 3px 9px rgba(10,45,94,.18)}
+.atlLandscapeHint{display:none;margin:0;padding:8px 11px;border-left:3px solid #d5a93a;background:#f8f3e5;color:#685721;font-size:10px;font-weight:850}
 .atlTableWrap{overflow-x:auto;border:1px solid #dfe5ec;border-radius:18px;background:white;box-shadow:0 10px 28px rgba(13,34,61,.06)}
-.atlTable{width:100%;min-width:760px;border-collapse:collapse;table-layout:fixed}
+.atlTable{width:100%;min-width:800px;border-collapse:separate;border-spacing:0;table-layout:fixed}
 .atlTable th,.atlTable td{padding:13px 8px;border-bottom:1px solid #edf0f4;color:#142033;text-align:center;white-space:nowrap}
-.atlTable th:first-child,.atlTable td:first-child{width:36%;text-align:left}
-.atlTable th:not(:first-child),.atlTable td:not(:first-child){width:10.66%}
 .atlTable th{background:#0a2d5e;color:white}
 .atlTable th button{border:0;background:none;color:white;font-size:11px;font-weight:1000}
 .atlTable tbody tr{cursor:pointer}
@@ -89,6 +95,13 @@ export function version68AroundLeague():Plugin{
 .atlTable td>span b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .atlTable td img,.atlTable td i{width:32px;height:32px;border-radius:50%;object-fit:cover;flex:0 0 auto}
 .atlTable td i{display:grid;place-items:center;background:#0a2d5e;color:white;font-size:9px;font-style:normal;font-weight:1000}
+.atlStatTable th:first-child,.atlStatTable td:first-child{position:sticky;left:0;width:21%;text-align:left;z-index:2;box-shadow:8px 0 12px -12px rgba(6,22,47,.65)}
+.atlStatTable th:first-child{z-index:3;background:#0a2d5e}
+.atlStatTable td:first-child{background:white}
+.atlStatTable tbody tr:hover td:first-child{background:#faf7ed}
+.atlStatTable th:not(:first-child),.atlStatTable td:not(:first-child){width:8.78%}
+.atlStatTable tbody tr:last-child td{border-bottom:0}
+.atlStatTableWrap:focus-visible{outline:3px solid rgba(213,169,58,.55);outline-offset:3px}
 .atlPlayersTitle{align-items:center;padding-top:14px}
 .atlPlayersTitle input{width:min(270px,48vw);border:1px solid #d9e0e8;border-radius:11px;padding:11px 13px;background:white;color:#142033;font:inherit}
 .atlPlayerGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -140,7 +153,18 @@ export function version68AroundLeague():Plugin{
   .atlLeaderStrip{grid-template-columns:repeat(2,1fr);gap:8px}
   .atlLeaderStrip button{min-height:120px;padding:14px}
   .atlLeaderStrip strong{font-size:35px}
+  .atlStatsPanel{width:calc(100vw - 24px)}
+  .atlStatsToolbar{grid-template-columns:1fr auto;align-items:center;gap:10px;padding-top:8px}
+  .atlStatsToolbar h2{font-size:22px}
+  .atlStatsToolbar>span{display:none}
+  .atlStatMode button{min-width:76px;padding:7px 8px;font-size:8px}
   .atlTable th,.atlTable td{padding:11px 5px;font-size:12px}
+  .atlStatTable{min-width:800px}
+  .atlStatTable th,.atlStatTable td{padding:9px 5px;font-size:10px}
+  .atlStatTable th button{font-size:9px}
+  .atlStatTable td img,.atlStatTable td i{width:26px;height:26px}
+  .atlStatTable td>span{gap:5px}
+  .atlStatTable td>span>em{width:14px;font-size:8px}
   .atlPlayerGrid{grid-template-columns:1fr}
   .atlPlayersTitle{align-items:flex-start;flex-direction:column}
   .atlPlayersTitle input{width:100%}
@@ -148,6 +172,8 @@ export function version68AroundLeague():Plugin{
   .atlPlayerHero>img,.atlPlayerHero>span{width:60px;height:60px}
   .atlPlayerStats b{font-size:15px}
 }
+@media(max-width:720px) and (orientation:portrait){.atlLandscapeHint{display:block}}
+@media(min-width:721px) and (max-width:900px){.atlStatsPanel{width:calc(100vw - 32px)}}
 `;
       code=code.replace(styleAnchor,styleAnchor+css);
       return {code,map:null};
