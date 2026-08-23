@@ -37,7 +37,7 @@ export default async function handler(request, response) {
           content: [
             {
               type: "input_text",
-              text: `Read this Y's Guys weekly basketball totals sheet. Match only players from this roster: ${JSON.stringify(roster)}. Extract whole-day totals for GP, wins, points, rebounds, assists, turnovers, steals, and blocks. Do not guess unreadable values. Omit absent players. Set uncertain true when any value or name match needs human review.`,
+              text: `Read this Y's Guys weekly basketball totals sheet. Match only players from this roster: ${JSON.stringify(roster)}. Extract whole-day totals for GP, wins, points, rebounds, assists, turnovers, and STL+BLK. STL+BLK is one combined category: if steals and blocks are written separately, add them together. Do not guess unreadable values. Omit absent players. Set uncertain true when any value or name match needs human review.`,
             },
             { type: "input_image", image_url: imageDataUrl, detail: "high" },
           ],
@@ -58,7 +58,7 @@ export default async function handler(request, response) {
                   items: {
                     type: "object",
                     additionalProperties: false,
-                    required: ["playerId", "gp", "wins", "pts", "reb", "ast", "turnovers", "stl", "blk", "uncertain"],
+                    required: ["playerId", "gp", "wins", "pts", "reb", "ast", "turnovers", "stocks", "uncertain"],
                     properties: {
                       playerId: { type: "string", enum: roster.map(player => player.id) },
                       gp: { type: "integer", minimum: 0 },
@@ -67,8 +67,7 @@ export default async function handler(request, response) {
                       reb: { type: "integer", minimum: 0 },
                       ast: { type: "integer", minimum: 0 },
                       turnovers: { type: "integer", minimum: 0 },
-                      stl: { type: "integer", minimum: 0 },
-                      blk: { type: "integer", minimum: 0 },
+                      stocks: { type: "integer", minimum: 0 },
                       uncertain: { type: "boolean" },
                     },
                   },
@@ -103,8 +102,7 @@ export default async function handler(request, response) {
         reb: Math.max(0, Math.round(Number(line.reb) || 0)),
         ast: Math.max(0, Math.round(Number(line.ast) || 0)),
         turnovers: Math.max(0, Math.round(Number(line.turnovers) || 0)),
-        stl: Math.max(0, Math.round(Number(line.stl) || 0)),
-        blk: Math.max(0, Math.round(Number(line.blk) || 0)),
+        stocks: Math.max(0, Math.round(Number(line.stocks) || 0)),
         uncertain: Boolean(line.uncertain),
       };
     });

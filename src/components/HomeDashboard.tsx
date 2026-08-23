@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 
 type PlayerLike={
   id:string;name:string;wins?:number;losses?:number;pts?:number;reb?:number;ast?:number;
+  stocks?:number;stl?:number;blk?:number;defensiveGp?:number;
   photoUrl?:string;overallOverride?:number
 };
 type RunLike={
@@ -22,6 +23,9 @@ type Props={
 
 function safeNumber(value:unknown){
   return typeof value==="number"&&Number.isFinite(value)?value:0;
+}
+function defensiveTotal(player:PlayerLike){
+  return player.stocks??(safeNumber(player.stl)+safeNumber(player.blk));
 }
 function initials(name?:string){
   return (name||"YG").split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join("").toUpperCase();
@@ -157,6 +161,7 @@ export default function HomeDashboard(props:Props){
             <span><b>{safeNumber(myPlayer.pts)}</b>PTS</span>
             <span><b>{safeNumber(myPlayer.reb)}</b>REB</span>
             <span><b>{safeNumber(myPlayer.ast)}</b>AST</span>
+            <span><b>{defensiveTotal(myPlayer)}</b>STL+BLK</span>
           </div>
           <i>VIEW PROFILE →</i>
         </button>:<button className="homeChoose" onClick={onChoosePlayer}>CHOOSE MY PLAYER</button>}
@@ -224,7 +229,7 @@ const css=`
 .homePlayerInner section small{color:#9eafc2}
 .homePlayerInner section strong{display:block;color:white;font-size:42px;line-height:1}
 .homePlayerInner section h3{margin:5px 0 0}
-.homePlayerStats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.homePlayerStats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
 .homePlayerStats span{text-align:center;color:#9eafc2;font-size:10px;letter-spacing:.06em}
 .homePlayerStats b{display:block;color:white;font-size:19px}
 .homePlayerInner>i{font-style:normal;color:#d5b45b;font-weight:900}
