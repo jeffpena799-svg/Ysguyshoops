@@ -88,7 +88,6 @@ export default function HomeDashboard(props:Props){
         <div><h1>Y'S GUYS</h1><p>THE LEAGUE IS ALIVE</p></div>
       </div>
       <div className="homeCleanActions">
-        {activeVote&&<button onClick={()=>onNavigate("voting")} aria-label="Active league vote">1</button>}
         <button className="homeCleanAvatar" onClick={()=>myPlayer?onOpenPlayer(myPlayer):onChoosePlayer()} aria-label="My Player">
           {myPlayer?.photoUrl?<img src={myPlayer.photoUrl} alt={myPlayer.name}/>:initials(myPlayer?.name)}
         </button>
