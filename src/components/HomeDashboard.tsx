@@ -12,7 +12,7 @@ type RunLike={
 type NewsLike={id:string;headline:string;summary?:string;category?:string;imageUrl?:string};
 type GameLike={id:string;date?:string;title?:string;teamA?:string;teamB?:string;scoreA?:number;scoreB?:number;mvp?:string};
 type RankingLike={playerId?:string;playerName:string;rank:number|null;movement:number|null;dnp?:boolean};
-type PollLike={title?:string}|null;
+type PollLike={id?:string;title?:string;description?:string;category?:string;deadline?:string;votes?:unknown[]}|null;
 
 type Props={
   players:PlayerLike[]; nextRun?:RunLike; featuredStory?:NewsLike; publishedNews:NewsLike[];
@@ -142,6 +142,12 @@ export default function HomeDashboard(props:Props){
         </>:<div className="homeEmpty">No published story yet.</div>}
       </article>
 
+      {activeVote&&<button className="homePoll" onClick={()=>onNavigate("voting")}>
+        <span className="homePollIcon">🗳️</span>
+        <div><small>LIVE LEAGUE POLL</small><h2>{activeVote.title||"League vote"}</h2>{activeVote.description&&<p>{activeVote.description}</p>}<b>{activeVote.votes?.length??0} recorded {(activeVote.votes?.length??0)===1?"vote":"votes"} · Tap to cast yours</b></div>
+        <strong>VOTE NOW →</strong>
+      </button>}
+
       <section className="homeQuick">
         <div className="homeSectionTitle"><b>QUICK ACCESS</b><span>EXPLORE THE LEAGUE</span></div>
         <div className="homeQuickGrid">
@@ -216,6 +222,9 @@ const css=`
 .homeNewsLinks small{color:#d5b45b}
 .homeNewsLinks b{grid-column:1}
 .homeNewsLinks i{grid-column:2;grid-row:1/3;font-size:24px;color:#d5b45b}
+.homePoll{grid-column:1/-1;width:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;padding:18px 20px;border:1px solid #d5b45b;border-radius:17px;background:linear-gradient(115deg,#d5a93a,#8d6718);color:#07152d;text-align:left;box-shadow:0 14px 32px rgba(0,0,0,.2)}
+.homePollIcon{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:#07152d;font-size:25px}
+.homePoll div{min-width:0}.homePoll small{font-size:9px;font-weight:1000;letter-spacing:.14em}.homePoll h2{margin:3px 0;color:#07152d;font-size:clamp(19px,3vw,29px);line-height:1.08}.homePoll p{margin:4px 0;color:#24344b}.homePoll b{font-size:11px}.homePoll>strong{white-space:nowrap;color:#07152d}
 .homeQuick{grid-column:1/-1;padding:20px}
 .homeQuickGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
 .homeQuickGrid button{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;text-align:left;border:1px solid rgba(213,180,91,.28);border-radius:14px;background:rgba(255,255,255,.035);color:white;padding:17px;min-height:94px}
@@ -237,7 +246,7 @@ const css=`
 .homeEmpty{min-height:150px;display:grid;place-items:center;color:#aab7c8;text-align:center}
 @media(max-width:980px){
   .homeCleanMain{grid-template-columns:1fr}
-  .homeQuick,.homePlayer{grid-column:auto}
+  .homeQuick,.homePlayer,.homePoll{grid-column:auto}
   .homeQuickGrid{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:640px){
@@ -255,6 +264,7 @@ const css=`
   .homeRsvp{gap:7px}
   .homeRsvp button{min-height:58px;font-size:13px;padding:7px 3px}
   .homeNews{min-height:0;padding:16px}
+  .homePoll{grid-template-columns:auto 1fr;padding:14px}.homePollIcon{width:44px;height:44px;font-size:20px}.homePoll>strong{grid-column:1/-1;text-align:center;border-top:1px solid rgba(7,21,45,.2);padding-top:9px}.homePoll p{display:none}
   .homeFeature{min-height:250px}
   .homeFeature p{max-width:100%}
   .homeQuick{padding:16px}
