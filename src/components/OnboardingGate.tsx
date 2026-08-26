@@ -72,10 +72,10 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
     setError('');
     setCreating(true);
     try {
-      const response = await fetch('/api/create-player', {
+      const response = await fetch('/api/player-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), nickname: nickname.trim(), position }),
+        body: JSON.stringify({ action: 'create', name: name.trim(), nickname: nickname.trim(), position }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Profile could not be created');
