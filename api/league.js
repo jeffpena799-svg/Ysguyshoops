@@ -1,6 +1,6 @@
 import postgres from "postgres";
 import { isAuthorized } from "./_auth.js";
-import { compactLeagueStorage, saveLeagueHistory } from "./_history.js";
+import { compactLeagueStorage, preserveLeagueMedia, saveLeagueHistory } from "./_history.js";
 
 const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
 const sql = postgres(connectionString, { ssl: "require", max: 1, idle_timeout: 20 });
@@ -142,9 +142,11 @@ export default async function handler(request, response) {
       if (!Number.isInteger(revision) || revision < 1) return response.status(400).json({ error: "Valid revision required" });
       const snapshots = await sql`SELECT data FROM league_history WHERE revision = ${revision}`;
       if (!snapshots.length) return response.status(404).json({ error: "Revision not found" });
+      const current = await sql`SELECT data FROM league_state WHERE id = 1`;
+      const restoredData = preserveLeagueMedia(snapshots[0].data, current[0]?.data);
       const rows = await sql`
         UPDATE league_state
-        SET data = ${sql.json(snapshots[0].data)}, revision = revision + 1, updated_at = NOW()
+        SET data = ${sql.json(restoredData)}, revision = revision + 1, updated_at = NOW()
         WHERE id = 1
         RETURNING data, revision, updated_at
       `;
