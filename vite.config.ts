@@ -67,4 +67,18 @@ function closeSundayFeature(): Plugin {
   };
 }
 
-export default defineConfig({plugins:[closeSundayFeature(),version632Feature(),version64Feature(),version65Feature(),version66Feature(),version66NavigationFix(),version66HomeComponent(),version67MyPlayer(),version671Readability(),version75HeaderMotto(),version673HomePolish(),version68AroundLeague(),version681HallReadability(),version682HomeCleanup(),version682MyPlayerEditors(),version684CommissionerFab(),version685HomeCompact(),version686RemovePlayerTimeline(),version687MyPlayerCompact(),version688MyPlayerPolish(),commissionerRecalibration(),version70DefensiveStats(),version71ProfileHistory(),version72WeeklyMvp(),version73PollIdentity(),version74WeeklyMvpArchive(),version76SwitchPlayer(),react()]});
+function powerRankingIntegrity(): Plugin {
+  return {
+    name: "ys-guys-power-ranking-integrity",
+    enforce: "pre",
+    transform(source, id) {
+      if (!id.endsWith("/src/App.tsx")) return null;
+      const required = ["function rankingDraft(", "function parseRankingPaste(", "Paste the full ranking order"];
+      const missing = required.filter(marker => !source.includes(marker));
+      if (missing.length) throw new Error(`Power Rankings fast entry lost required code: ${missing.join(", ")}`);
+      return null;
+    },
+  };
+}
+
+export default defineConfig({plugins:[closeSundayFeature(),version632Feature(),version64Feature(),version65Feature(),version66Feature(),version66NavigationFix(),version66HomeComponent(),version67MyPlayer(),version671Readability(),version75HeaderMotto(),version673HomePolish(),version68AroundLeague(),version681HallReadability(),version682HomeCleanup(),version682MyPlayerEditors(),version684CommissionerFab(),version685HomeCompact(),version686RemovePlayerTimeline(),version687MyPlayerCompact(),version688MyPlayerPolish(),commissionerRecalibration(),version70DefensiveStats(),version71ProfileHistory(),version72WeeklyMvp(),version73PollIdentity(),version74WeeklyMvpArchive(),version76SwitchPlayer(),powerRankingIntegrity(),react()]});
