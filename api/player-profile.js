@@ -88,7 +88,7 @@ export default async function handler(request, response) {
   const hasPhoto = typeof photoUrl === "string";
   if (typeof playerId !== "string" || (!hasPosition && !hasPhoto)) return response.status(400).json({ error: "Choose a profile update" });
   if (hasPosition && !allowedPositions.has(position)) return response.status(400).json({ error: "Choose a valid player position" });
-  if (hasPhoto && (!photoUrl.startsWith("data:image/jpeg;base64,") || photoUrl.length > 1_600_000)) {
+  if (hasPhoto && (!photoUrl.startsWith("data:image/jpeg;base64,") || photoUrl.length > 200_000)) {
     return response.status(400).json({ error: "Choose a smaller profile picture" });
   }
   try {
