@@ -25,10 +25,14 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
   const [position, setPosition] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [claimedBefore, setClaimedBefore] = useState(false);
 
   useEffect(() => {
     const existing = localStorage.getItem('yg-my-player');
     const skipped = localStorage.getItem('yg-onboarding-skipped') === '1';
+    const wasClaimed = localStorage.getItem('yg-player-ever-claimed') === '1' || Boolean(existing);
+    if (existing) localStorage.setItem('yg-player-ever-claimed', '1');
+    setClaimedBefore(wasClaimed);
     setShow(!existing && !skipped);
     setReady(true);
   }, []);
@@ -58,6 +62,7 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
 
   const choosePlayer = (playerId: string) => {
     localStorage.setItem('yg-my-player', playerId);
+    localStorage.setItem('yg-player-ever-claimed', '1');
     localStorage.removeItem('yg-onboarding-skipped');
     setShow(false);
   };
@@ -70,6 +75,13 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
   const createPlayer = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
+    if (localStorage.getItem('yg-player-ever-claimed') === '1') {
+      setClaimedBefore(true);
+      setMode('existing');
+      await loadPlayers();
+      setError('This device has already claimed a player. Choose an existing profile instead.');
+      return;
+    }
     setCreating(true);
     try {
       const response = await fetch('/api/player-profile', {
@@ -80,6 +92,7 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Profile could not be created');
       localStorage.setItem('yg-my-player', result.player.id);
+      localStorage.setItem('yg-player-ever-claimed', '1');
       localStorage.removeItem('yg-onboarding-skipped');
       setShow(false);
     } catch (err) {
@@ -106,9 +119,10 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
                 <button style={styles.primary} onClick={loadPlayers} disabled={loadingPlayers}>
                   {loadingPlayers ? 'Loading roster…' : "I'm already a Y's Guy"}
                 </button>
-                <button style={styles.secondary} onClick={() => { setError(''); setMode('new'); }}>
+                {!claimedBefore && <button style={styles.secondary} onClick={() => { setError(''); setMode('new'); }}>
                   I'm new here
-                </button>
+                </button>}
+                {claimedBefore && <p style={styles.claimedNote}>This device was already linked to a player. You can choose an existing profile, but you cannot create another one.</p>}
                 <button style={styles.guest} onClick={browseAsGuest}>Just browse for now</button>
               </>
             )}
@@ -141,7 +155,7 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
                       <strong style={styles.chevron}>›</strong>
                     </button>
                   ))}
-                  {!filteredPlayers.length && <p style={styles.empty}>No player found. Try your nickname, or go back and create a new profile.</p>}
+                  {!filteredPlayers.length && <p style={styles.empty}>{claimedBefore ? 'No player found. Try another spelling or ask the Commissioner to add the player.' : 'No player found. Try your nickname, or go back and create a new profile.'}</p>}
                 </div>
               </>
             )}
@@ -224,4 +238,5 @@ const styles: Record<string, React.CSSProperties> = {
   label: { display: 'block', color: NAVY, fontWeight: 800, fontSize: 14, marginBottom: 14 },
   optional: { color: '#8793a4', fontWeight: 600 },
   error: { background: '#fff0f0', color: '#9f2424', borderRadius: 12, padding: 12, marginTop: 14, fontWeight: 700, fontSize: 14 },
+  claimedNote: { background: '#f3f6fa', color: '#526174', borderRadius: 12, padding: 12, margin: '12px 0 0', fontWeight: 700, fontSize: 13, lineHeight: 1.45 },
 };
