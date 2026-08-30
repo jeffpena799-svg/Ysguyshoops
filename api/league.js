@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import { isAuthorized } from "./_auth.js";
+import { compactLeagueStorage, saveLeagueHistory } from "./_history.js";
 
 const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
 const sql = postgres(connectionString, { ssl: "require", max: 1, idle_timeout: 20 });
@@ -87,6 +88,8 @@ async function ensureTable() {
 export default async function handler(request, response) {
   try {
     await ensureTable();
+    const storage = await compactLeagueStorage(sql);
+    if (storage.deletedCount > 0) console.info("league-history-compacted", storage);
     if (request.method === "GET") {
       const historyRequested = new URL(request.url, "https://ysguyshoops.vercel.app").searchParams.get("history") === "1";
       if (historyRequested) {
@@ -105,11 +108,7 @@ export default async function handler(request, response) {
           RETURNING data, revision, updated_at
         `;
         if (migrated.length) {
-          await sql`
-            INSERT INTO league_history (revision, data, created_at)
-            VALUES (${migrated[0].revision}, ${sql.json(migrated[0].data)}, ${migrated[0].updated_at})
-            ON CONFLICT (revision) DO NOTHING
-          `;
+          await saveLeagueHistory(sql, migrated[0].revision, migrated[0].data, migrated[0].updated_at);
           return response.status(200).json({ data: migrated[0].data, revision: migrated[0].revision, updatedAt: migrated[0].updated_at });
         }
         const refreshed = await sql`SELECT data, revision, updated_at FROM league_state WHERE id = 1`;
@@ -134,11 +133,7 @@ export default async function handler(request, response) {
           updated_at = NOW()
         RETURNING revision, updated_at
       `;
-      await sql`
-        INSERT INTO league_history (revision, data, created_at)
-        VALUES (${rows[0].revision}, ${sql.json(data)}, ${rows[0].updated_at})
-        ON CONFLICT (revision) DO NOTHING
-      `;
+      await saveLeagueHistory(sql, rows[0].revision, data, rows[0].updated_at);
       return response.status(200).json({ ok: true, revision: rows[0].revision, updatedAt: rows[0].updated_at });
     }
     if (request.method === "POST") {
@@ -153,7 +148,7 @@ export default async function handler(request, response) {
         WHERE id = 1
         RETURNING data, revision, updated_at
       `;
-      await sql`INSERT INTO league_history (revision, data, created_at) VALUES (${rows[0].revision}, ${sql.json(rows[0].data)}, ${rows[0].updated_at})`;
+      await saveLeagueHistory(sql, rows[0].revision, rows[0].data, rows[0].updated_at);
       return response.status(200).json({ data: rows[0].data, revision: rows[0].revision, updatedAt: rows[0].updated_at });
     }
     return response.status(405).json({ error: "Method not allowed" });

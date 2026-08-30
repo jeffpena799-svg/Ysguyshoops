@@ -23,6 +23,11 @@ export function version76SwitchPlayer():Plugin{
       let code=source;
 
       code=replaceRequired(code,
+        'const chooseMyPlayer=(id:string)=>{setMyPlayerId(id);if(id)localStorage.setItem("yg-my-player",id);else localStorage.removeItem("yg-my-player");};',
+        'const chooseMyPlayer=(id:string)=>{setMyPlayerId(id);if(id){localStorage.setItem("yg-my-player",id);localStorage.setItem("yg-player-ever-claimed","1");}else localStorage.removeItem("yg-my-player");};'
+      );
+
+      code=replaceRequired(code,
         '<button className="myPlayerPill" onClick={()=>myPlayer?openProfile(myPlayer):setShowMyPlayerPicker(true)}>',
         '<button className="myPlayerPill" onClick={()=>setShowMyPlayerPicker(true)} aria-label={myPlayer?`Switch player. Currently ${myPlayer.name}`:"Choose My Player"} title={myPlayer?"Switch Player":"Choose My Player"}>'
       );

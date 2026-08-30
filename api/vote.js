@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { saveLeagueHistory } from "./_history.js";
 
 const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
 const sql = postgres(connectionString, { ssl: "require", max: 1, idle_timeout: 20 });
@@ -33,11 +34,7 @@ export default async function handler(request, response) {
         WHERE id = 1
         RETURNING revision, updated_at
       `;
-      await transaction`
-        INSERT INTO league_history (revision, data, created_at)
-        VALUES (${updated[0].revision}, ${transaction.json(nextData)}, ${updated[0].updated_at})
-        ON CONFLICT (revision) DO NOTHING
-      `;
+      await saveLeagueHistory(transaction, updated[0].revision, nextData, updated[0].updated_at);
       return { polls: nextData.polls, revision: updated[0].revision, updatedAt: updated[0].updated_at };
     });
     return response.status(200).json(result);
