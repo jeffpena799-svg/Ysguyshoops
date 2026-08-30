@@ -82,15 +82,16 @@ export async function compactLeagueStorage(database, { forceVacuum = false } = {
     const current = await database`SELECT data, revision, updated_at FROM league_state WHERE id = 1`;
     if (current.length) {
       const snapshot = createHistorySnapshot(current[0].data);
-      await database.begin(async transaction => {
-        await transaction`TRUNCATE TABLE league_history`;
-        await transaction`
-          INSERT INTO league_history (revision, data, created_at)
-          VALUES (${current[0].revision}, ${transaction.json(snapshot)}, ${current[0].updated_at})
-        `;
-      });
-      deletedCount = Math.max(0, historyCount - 1);
+      // Commit the truncate and reclaim its disk space before writing the compact
+      // snapshot. At the project storage ceiling, an atomic rewrite cannot extend
+      // the table even though the transaction has logically removed the old rows.
+      await database`TRUNCATE TABLE league_history`;
       await database.unsafe("VACUUM league_history");
+      await database`
+        INSERT INTO league_history (revision, data, created_at)
+        VALUES (${current[0].revision}, ${database.json(snapshot)}, ${current[0].updated_at})
+      `;
+      deletedCount = Math.max(0, historyCount - 1);
       await database.unsafe("VACUUM league_state");
       return { deletedCount, retainedCount: 1, rebuiltWithoutEmbeddedMedia: true };
     }
