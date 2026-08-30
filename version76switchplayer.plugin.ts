@@ -1,5 +1,7 @@
 import type { Plugin } from "vite";
 
+// Device identity is local-only; switching never mutates shared league records.
+
 function replaceRequired(source:string,search:string,replacement:string){
   if(!source.includes(search))throw new Error(`Switch Player patch could not find: ${search.slice(0,120)}`);
   return source.replace(search,replacement);
