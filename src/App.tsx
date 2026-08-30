@@ -340,31 +340,16 @@ function normalizeLegacyGames(games:Game[]){
     return {...game,teamA:"Side A",teamB:"Side B",boxScore:game.boxScore?.map(line=>({...line,team:mapTeam(line.team)}))};
   });
 }
-type DecodedPhoto={source:CanvasImageSource;width:number;height:number;close:()=>void};
-async function decodePhoto(file:File):Promise<DecodedPhoto>{
-  if(typeof createImageBitmap==="function"){
-    try{const bitmap=await createImageBitmap(file);return {source:bitmap,width:bitmap.width,height:bitmap.height,close:()=>bitmap.close()}}catch{}
-  }
-  return new Promise((resolve,reject)=>{
-    const url=URL.createObjectURL(file),image=new Image();
-    image.onload=()=>resolve({source:image,width:image.naturalWidth,height:image.naturalHeight,close:()=>URL.revokeObjectURL(url)});
-    image.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("This picture format could not be opened. Try a JPG, PNG or screenshot."))};
-    image.src=url;
-  });
-}
 async function compressImage(file:File):Promise<string>{
   if(!file.type.startsWith("image/"))throw new Error("Choose an image file");
-  if(file.size>20_000_000)throw new Error("Image must be under 20 MB");
-  const decoded=await decodePhoto(file),side=Math.min(decoded.width,decoded.height),size=Math.min(384,Math.max(1,side));
+  if(file.size>12_000_000)throw new Error("Image must be under 12 MB");
+  const source=await createImageBitmap(file);
+  const max=900,scale=Math.min(1,max/Math.max(source.width,source.height));
   const canvas=document.createElement("canvas");
-  canvas.width=size;canvas.height=size;
+  canvas.width=Math.max(1,Math.round(source.width*scale));canvas.height=Math.max(1,Math.round(source.height*scale));
   const context=canvas.getContext("2d");if(!context)throw new Error("Image processing unavailable");
-  const left=(decoded.width-side)/2,top=(decoded.height-side)/2;
-  context.drawImage(decoded.source,left,top,side,side,0,0,size,size);decoded.close();
-  let quality=.72,result=canvas.toDataURL("image/jpeg",quality);
-  while(result.length>180_000&&quality>.36){quality-=.08;result=canvas.toDataURL("image/jpeg",quality)}
-  if(result.length>200_000)throw new Error("This picture is still too large. Try a screenshot or a different picture.");
-  return result;
+  context.drawImage(source,0,0,canvas.width,canvas.height);source.close();
+  return canvas.toDataURL("image/jpeg",.68);
 }
 function isFinal(game:Game){ return (game.status??"final")==="final"; }
 function applyBoxScoreDelta(players:Player[],oldGame:Game|undefined,newGame:Game|undefined){
