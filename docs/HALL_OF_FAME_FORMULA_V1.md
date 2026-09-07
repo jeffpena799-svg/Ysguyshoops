@@ -77,13 +77,13 @@ Awards stack across seasons.
 
 | Hall Points | Status |
 |---:|---|
-| 0–24 | Career Beginning |
-| 25–49 | Building a Résumé |
-| 50–74 | League Standout |
-| 75–99 | Hall Watch |
-| 100+ | Hall of Fame Eligible |
+| 0–9 | Guest Pass |
+| 10–29 | Membership Activated |
+| 30–59 | Certified Y’s Guy |
+| 60–99 | League Legend |
+| 100+ | Hall of Famer |
 
-An inducted player receives a permanent **Hall of Famer** status separate from the calculated point total.
+**Hall of Famer** status begins when a player reaches 100% Hall Progress.
 
 ## Planning Assumptions
 

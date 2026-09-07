@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { hallProgressLevel } from "./hallProgress";
 
 const NAVY = "#0A2D5E";
 const GOLD = "#C7A24D";
@@ -193,11 +194,7 @@ function awardHallPoints(name:string){
   return 0;
 }
 function hallStatus(total:number){
-  if(total>=100)return "Hall of Fame Eligible";
-  if(total>=75)return "Hall Watch";
-  if(total>=50)return "League Standout";
-  if(total>=25)return "Building a Résumé";
-  return "Career Beginning";
+  return hallProgressLevel(total).name;
 }
 const WEEKLY_MVP_HALL_POINTS=0.5;
 function weeklyMvpWins(player:Player){return (player.weeklyMvpCredits??[]).reduce((sum,credit)=>sum+Math.max(0,Number(credit.count)||0),0);}
