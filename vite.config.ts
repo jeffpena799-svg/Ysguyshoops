@@ -27,6 +27,7 @@ import { version74WeeklyMvpArchive } from "./version74weeklymvparchive.plugin";
 import { version75HeaderMotto } from "./version75headermotto.plugin";
 import { version76SwitchPlayer } from "./version76switchplayer.plugin";
 import { version77HallHistory } from "./version77hallhistory.plugin";
+import { version78Milestones } from "./version78milestones.plugin";
 
 function replaceRequired(source: string, search: string, replacement: string): string {
   if (!source.includes(search)) {
@@ -82,4 +83,4 @@ function powerRankingIntegrity(): Plugin {
   };
 }
 
-export default defineConfig({plugins:[closeSundayFeature(),version632Feature(),version64Feature(),version65Feature(),version66Feature(),version66NavigationFix(),version66HomeComponent(),version67MyPlayer(),version671Readability(),version75HeaderMotto(),version673HomePolish(),version68AroundLeague(),version681HallReadability(),version682HomeCleanup(),version682MyPlayerEditors(),version684CommissionerFab(),version685HomeCompact(),version686RemovePlayerTimeline(),version687MyPlayerCompact(),version688MyPlayerPolish(),commissionerRecalibration(),version70DefensiveStats(),version71ProfileHistory(),version72WeeklyMvp(),version73PollIdentity(),version74WeeklyMvpArchive(),version76SwitchPlayer(),version77HallHistory(),powerRankingIntegrity(),react()]});
+export default defineConfig({plugins:[closeSundayFeature(),version632Feature(),version64Feature(),version65Feature(),version66Feature(),version66NavigationFix(),version66HomeComponent(),version67MyPlayer(),version671Readability(),version75HeaderMotto(),version673HomePolish(),version68AroundLeague(),version681HallReadability(),version682HomeCleanup(),version682MyPlayerEditors(),version684CommissionerFab(),version685HomeCompact(),version686RemovePlayerTimeline(),version687MyPlayerCompact(),version688MyPlayerPolish(),commissionerRecalibration(),version70DefensiveStats(),version71ProfileHistory(),version72WeeklyMvp(),version73PollIdentity(),version74WeeklyMvpArchive(),version76SwitchPlayer(),version77HallHistory(),version78Milestones(),powerRankingIntegrity(),react()]});
