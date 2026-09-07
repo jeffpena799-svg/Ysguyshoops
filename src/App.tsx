@@ -11,6 +11,7 @@ type Player = {
   signatureBadge?:string; photoUrl?:string; bannerColor?:string; overallOverride?:number;
   defenseRating?:number; formulaOverall?:number;
   weeklyMvpCredits?:WeeklyMvpCredit[];
+  archetypeChoice?:string; seenCareerBannerIds?:string[]; careerStatusSeen?:boolean;
 };
 
 type WeeklyMvpCredit = { id:string; season:string; count:number; sourcePollId?:string; awardedAt?:string };
@@ -505,6 +506,12 @@ export default function App(){
     const result=await response.json();setPlayers(result.players);localStorage.setItem("yg-players",JSON.stringify(result.players));
     setSelected(result.players.find((player:Player)=>player.id===playerId)??null);setCloudUpdatedAt(result.updatedAt);setCloudStatus("cloud");setToast("Profile picture updated everywhere");setTimeout(()=>setToast(""),2000);
   };
+  const updateOwnProfile=async(playerId:string,updates:{nickname?:string;position?:string;photoUrl?:string;archetypeChoice?:string;seenCareerBannerIds?:string[];careerStatusSeen?:boolean})=>{
+    const response=await fetch("/api/player-profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({playerId,...updates})});
+    if(!response.ok){const result=await response.json().catch(()=>({}));throw new Error(result.error||"Profile could not be saved");}
+    const result=await response.json();setPlayers(result.players);localStorage.setItem("yg-players",JSON.stringify(result.players));
+    setSelected(result.players.find((player:Player)=>player.id===playerId)??null);setCloudUpdatedAt(result.updatedAt);setCloudStatus("cloud");setToast("My Player updated everywhere");setTimeout(()=>setToast(""),2000);
+  };
   const updateSundaySessions=(nextSessions:SundaySession[])=>{
     const nextPlayers=applySundayLedger(players,statBaseline,nextSessions,games);
     setSundaySessions(nextSessions);setPlayers(nextPlayers);
@@ -569,7 +576,13 @@ export default function App(){
         <div className="playerGrid">{filtered.map(p=><PlayerDirectoryCard key={p.id} player={p} roster={players} isMyPlayer={p.id===myPlayerId} onOpen={()=>openProfile(p)} onPhotoSave={updateOwnPhoto}/>)}</div>
       </Page>}
 
-      {view==="profile" && selected && <PlayerUniverseProfile player={selected} roster={players} games={games} sundaySessions={sundaySessions} nextRun={nextRun} officialAwards={awards} rank={players.slice().sort((a,b)=>(overallRating(b,players)??0)-(overallRating(a,players)??0)).findIndex(p=>p.id===selected.id)+1} isMyPlayer={selected.id===myPlayerId} onRsvp={submitRsvp} onPhotoSave={updateOwnPhoto} onPositionChange={updateOwnPosition} onBack={()=>go("players")}/>}
+      {view==="profile" && selected && <PlayerUniverseProfile
+        player={selected} roster={players} games={games} sundaySessions={sundaySessions}
+        nextRun={nextRun} officialAwards={awards}
+        rank={players.slice().sort((a,b)=>(overallRating(b,players)??0)-(overallRating(a,players)??0)).findIndex(p=>p.id===selected.id)+1}
+        isMyPlayer={selected.id===myPlayerId} onRsvp={submitRsvp} onPhotoSave={updateOwnPhoto}
+        onPositionChange={updateOwnPosition} onProfileChange={updateOwnProfile} onBack={()=>go("players")}
+      />}
 
       {view==="compare" && <PlayerComparison players={players} awards={awards}/>}
 
@@ -671,7 +684,7 @@ function PlayerDirectoryCard({player,roster,isMyPlayer,onOpen,onPhotoSave}:{play
   return <article className="playerCard"><button className="playerCardOpen" onClick={onOpen}><div className="playerCardTop">{player.photoUrl?<img className="playerThumb" src={player.photoUrl} alt={`${player.name} profile`}/>:<span className="playerPhotoPlaceholder">{isMyPlayer?<><b>＋</b><small>Add Photo</small></>:initials(player.name)}</span>}<span className="bigAvatar">{rating??"PROV"}<small>{rating===null?"":"OVR"}</small></span></div><span className="pos">{player.jerseyNumber?`#${player.jerseyNumber} · `:""}{player.position}</span><h3>{player.name}</h3><div className="miniStats"><span><b>{avg(player.pts,player)}</b>PPG</span><span><b>{avg(player.reb,player)}</b>RPG</span><span><b>{avg(player.ast,player)}</b>APG</span></div><div className="record">{player.wins}-{player.losses}</div></button>{isMyPlayer&&<label className="quickPhotoButton">{busy?"Saving…":player.photoUrl?"Change Photo":"Add Profile Picture"}<input type="file" accept="image/*" disabled={busy} onChange={event=>{choose(event.target.files?.[0]);event.target.value=""}}/></label>}{error&&<small className="cardError">{error}</small>}</article>;
 }
 
-function PlayerUniverseProfile({player,roster,games,sundaySessions,nextRun,officialAwards,rank,isMyPlayer,onRsvp,onPhotoSave,onPositionChange,onBack}:{player:Player;roster:Player[];games:Game[];sundaySessions:SundaySession[];nextRun?:SundayRun;officialAwards:Award[];rank:number;isMyPlayer:boolean;onRsvp:(runId:string,rsvp:Omit<RunRsvp,"updatedAt">)=>Promise<void>;onPhotoSave:(playerId:string,photoUrl:string)=>Promise<void>;onPositionChange:(playerId:string,position:string)=>Promise<void>;onBack:()=>void}){
+function PlayerUniverseProfile({player,roster,games,sundaySessions,nextRun,officialAwards,rank,isMyPlayer,onRsvp,onPhotoSave,onPositionChange,onProfileChange,onBack}:{player:Player;roster:Player[];games:Game[];sundaySessions:SundaySession[];nextRun?:SundayRun;officialAwards:Award[];rank:number;isMyPlayer:boolean;onRsvp:(runId:string,rsvp:Omit<RunRsvp,"updatedAt">)=>Promise<void>;onPhotoSave:(playerId:string,photoUrl:string)=>Promise<void>;onPositionChange:(playerId:string,position:string)=>Promise<void>;onProfileChange:(playerId:string,updates:{nickname?:string;position?:string;photoUrl?:string;archetypeChoice?:string;seenCareerBannerIds?:string[];careerStatusSeen?:boolean})=>Promise<void>;onBack:()=>void}){
   const honors=[...new Set([...player.awards,...officialAwards.filter(award=>awardBelongsToPlayer(award,player)).map(a=>`${a.season} ${a.name}`)])];
   const logs=games.filter(game=>game.boxScore?.some(line=>line.playerId===player.id)).map(game=>({game,line:game.boxScore!.find(line=>line.playerId===player.id)!}));
   const rating=overallRating(player,roster,games);

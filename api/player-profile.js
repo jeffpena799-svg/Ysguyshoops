@@ -83,11 +83,19 @@ export default async function handler(request, response) {
     }
   }
 
-  const { playerId, position, photoUrl } = body;
+  const { playerId, position, photoUrl, nickname, archetypeChoice, seenCareerBannerIds, careerStatusSeen } = body;
   const hasPosition = typeof position === "string";
   const hasPhoto = typeof photoUrl === "string";
-  if (typeof playerId !== "string" || (!hasPosition && !hasPhoto)) return response.status(400).json({ error: "Choose a profile update" });
+  const hasNickname = typeof nickname === "string";
+  const hasArchetype = typeof archetypeChoice === "string";
+  const hasSeenBanners = Array.isArray(seenCareerBannerIds);
+  const hasCareerStatus = typeof careerStatusSeen === "boolean";
+  if (typeof playerId !== "string" || (!hasPosition && !hasPhoto && !hasNickname && !hasArchetype && !hasSeenBanners && !hasCareerStatus)) return response.status(400).json({ error: "Choose a profile update" });
   if (hasPosition && !allowedPositions.has(position)) return response.status(400).json({ error: "Choose a valid player position" });
+  if (hasNickname && (nickname.trim().length < 1 || nickname.trim().length > 60)) return response.status(400).json({ error: "Choose a nickname under 60 characters" });
+  const allowedArchetypes = new Set(["Human Torch","Hulk","Doctor Strange","Batman","Spider-Man","Iron Man","Thor","Black Panther","Superman","Captain America"]);
+  if (hasArchetype && !allowedArchetypes.has(archetypeChoice)) return response.status(400).json({ error: "Choose a valid archetype" });
+  const cleanSeenBanners = hasSeenBanners ? [...new Set(seenCareerBannerIds.filter(value => typeof value === "string" && /^[a-z]+-\d+$/.test(value)))].slice(0, 100) : undefined;
   if (hasPhoto && (!photoUrl.startsWith("data:image/jpeg;base64,") || photoUrl.length > 200_000)) {
     return response.status(400).json({ error: "Choose a smaller profile picture" });
   }
@@ -102,6 +110,10 @@ export default async function handler(request, response) {
         ...player,
         ...(hasPosition ? { position } : {}),
         ...(hasPhoto ? { photoUrl } : {}),
+        ...(hasNickname ? { nickname: nickname.trim() } : {}),
+        ...(hasArchetype ? { archetypeChoice } : {}),
+        ...(hasSeenBanners ? { seenCareerBannerIds: cleanSeenBanners } : {}),
+        ...(hasCareerStatus ? { careerStatusSeen } : {}),
       } : player);
       const nextData = { ...data, players: nextPlayers };
       const updated = await transaction`
