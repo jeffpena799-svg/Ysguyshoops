@@ -29,11 +29,11 @@ const MILESTONES=[
 ];
 
 const LEVELS=[
-  {name:"Guest Pass",min:0,max:9,tone:"steel"},
-  {name:"Membership Activated",min:10,max:29,tone:"blue"},
-  {name:"Certified Y’s Guy",min:30,max:59,tone:"gold"},
-  {name:"League Legend",min:60,max:99,tone:"purple"},
-  {name:"Hall of Famer",min:100,max:100,tone:"platinum"},
+  {name:"Career Beginning",min:0,max:24,tone:"steel"},
+  {name:"Building a Résumé",min:25,max:49,tone:"blue"},
+  {name:"League Standout",min:50,max:74,tone:"gold"},
+  {name:"Hall Watch",min:75,max:99,tone:"purple"},
+  {name:"Hall of Fame Eligible",min:100,max:100,tone:"platinum"},
 ] as const;
 
 const n=(value:number)=>Number.isInteger(value)?String(value):value.toFixed(1);
@@ -46,8 +46,6 @@ const playerOwnsAward=(award:Award,player:Player)=>award.winnerId===player.id||a
 
 type Totals={gp:number;wins:number;losses:number;pts:number;reb:number;ast:number;turnovers:number;stocks:number;defensiveGp:number};
 const playerTotals=(player:Player):Totals=>({gp:gp(player),wins:player.wins,losses:player.losses,pts:player.pts,reb:player.reb,ast:player.ast,turnovers:player.turnovers,stocks:stocks(player),defensiveGp:player.defensiveGp??0});
-const sessionTotals=(playerId:string,sessions:SundaySession[]):Totals=>sessions.reduce<Totals>((total,session)=>{const line=session.lines.find(item=>item.playerId===playerId);if(!line)return total;const tracked=line.stocks!==undefined||line.stl!==undefined||line.blk!==undefined;return {gp:total.gp+line.gp,wins:total.wins+line.wins,losses:total.losses+Math.max(0,line.gp-line.wins),pts:total.pts+line.pts,reb:total.reb+line.reb,ast:total.ast+line.ast,turnovers:total.turnovers+line.turnovers,stocks:total.stocks+stocks(line),defensiveGp:total.defensiveGp+(tracked?line.gp:0)}} ,{gp:0,wins:0,losses:0,pts:0,reb:0,ast:0,turnovers:0,stocks:0,defensiveGp:0});
-
 const percentile=(value:number,values:number[],lower=false)=>{if(values.length<2)return 50;const ordered=[...values].sort((a,b)=>a-b);const below=ordered.filter(item=>lower?item>value:item<value).length;const equal=ordered.filter(item=>item===value).length;return Math.max(0,Math.min(100,100*(below+Math.max(0,equal-1)/2)/(ordered.length-1)))};
 const toRating=(percent:number)=>Math.max(50,Math.min(99,Math.round(50+percent*.49)));
 const rateTotals=(target:Totals,all:Totals[])=>{
@@ -87,7 +85,7 @@ async function cropPhoto(file:File,zoom:number,x:number,y:number){
   if(result.length>200_000)throw new Error("Try a smaller picture");return result;
 }
 
-export default function MyPlayerCareerHub({player,roster,sundaySessions,officialAwards,isMyPlayer,onBack,onProfileChange}:{player:Player;roster:Player[];sundaySessions:SundaySession[];officialAwards:Award[];isMyPlayer:boolean;onBack:()=>void;onProfileChange:(playerId:string,updates:ProfileUpdates)=>Promise<void>}){
+export default function MyPlayerCareerHub({player,roster,sundaySessions,officialAwards,overallRating,overallRank,isMyPlayer,onBack,onProfileChange}:{player:Player;roster:Player[];sundaySessions:SundaySession[];officialAwards:Award[];overallRating:number|null;overallRank:number;isMyPlayer:boolean;onBack:()=>void;onProfileChange:(playerId:string,updates:ProfileUpdates)=>Promise<void>}){
   const [tab,setTab]=useState<"overview"|"attributes"|"career"|"log">("overview");
   const [statsMode,setStatsMode]=useState<"season"|"career">("season");
   const [showEditor,setShowEditor]=useState(false);const [showAllGoals,setShowAllGoals]=useState(false);const [showAllBanners,setShowAllBanners]=useState(false);const [openLog,setOpenLog]=useState<string|null>(null);const [bestMode,setBestMode]=useState<"averages"|"totals">("averages");
@@ -99,15 +97,16 @@ export default function MyPlayerCareerHub({player,roster,sundaySessions,official
   useEffect(()=>()=>{if(photoPreview)URL.revokeObjectURL(photoPreview)},[photoPreview]);
 
   const career=useMemo(()=>playerTotals(player),[player]);
-  const season=useMemo(()=>sessionTotals(player.id,sundaySessions),[player.id,sundaySessions]);
+  // Season 2 is the league's first technical season, so its totals are the
+  // career totals until the Commissioner starts a future season rollover.
+  const season=career;
   const careerRoster=useMemo(()=>roster.map(playerTotals),[roster]);
-  const seasonRoster=useMemo(()=>roster.map(item=>sessionTotals(item.id,sundaySessions)),[roster,sundaySessions]);
+  const seasonRoster=careerRoster;
   const careerRatings=useMemo(()=>rateTotals(career,careerRoster),[career,careerRoster]);
   const seasonRatings=useMemo(()=>season.gp?rateTotals(season,seasonRoster):careerRatings,[season,seasonRoster,careerRatings]);
   const ratings=useMemo(()=>blendRatings(careerRatings,seasonRatings,season.gp),[careerRatings,seasonRatings,season.gp]);
-  const calculatedOverall=overall(ratings),official=career.gp>=20;
-  const rosterOverall=useMemo(()=>roster.map(item=>{const c=playerTotals(item),s=sessionTotals(item.id,sundaySessions),cr=rateTotals(c,careerRoster),sr=s.gp?rateTotals(s,seasonRoster):cr;return {id:item.id,games:c.gp,value:overall(blendRatings(cr,sr,s.gp))}}),[roster,sundaySessions,careerRoster,seasonRoster]);
-  const officialRank=rosterOverall.filter(item=>item.games>=20).sort((a,b)=>b.value-a.value).findIndex(item=>item.id===player.id)+1;
+  const calculatedOverall=overall(ratings),displayedOverall=overallRating??calculatedOverall,official=career.gp>=20;
+  const rosterOverall=useMemo(()=>roster.map(item=>{const c=playerTotals(item),cr=rateTotals(c,careerRoster);return {id:item.id,games:c.gp,value:overall(blendRatings(cr,cr,c.gp))}}),[roster,careerRoster]);
   const archetype=ARCHETYPES.find(item=>item.name===archetypeChoice)??ARCHETYPES[9];
 
   const earned=useMemo(()=>MILESTONES.filter(item=>career[item.key]>=item.threshold),[career]);
@@ -122,7 +121,7 @@ export default function MyPlayerCareerHub({player,roster,sundaySessions,official
   const closeStatus=async()=>{setShowStatusIntro(false);try{await onProfileChange(player.id,{careerStatusSeen:true})}catch{}};
 
   const display=statsMode==="season"?season:career;const displayGp=display.gp;const statItems=[{label:"PPG",value:per(display.pts,displayGp)},{label:"RPG",value:per(display.reb,displayGp)},{label:"APG",value:per(display.ast,displayGp)},{label:"TO/G",value:per(display.turnovers,displayGp)},{label:"STL+BLK/G",value:display.defensiveGp?per(display.stocks,display.defensiveGp):"—"}];
-  const ratingRanks=(key:keyof Ratings)=>[...rosterOverall.map(item=>{const p=roster.find(player=>player.id===item.id)!;const c=playerTotals(p),s=sessionTotals(p.id,sundaySessions),cr=rateTotals(c,careerRoster),sr=s.gp?rateTotals(s,seasonRoster):cr;return {id:p.id,value:blendRatings(cr,sr,s.gp)[key]}})].sort((a,b)=>b.value-a.value).findIndex(item=>item.id===player.id)+1;
+  const ratingRanks=(key:keyof Ratings)=>[...rosterOverall.map(item=>{const p=roster.find(player=>player.id===item.id)!;const c=playerTotals(p),cr=rateTotals(c,careerRoster);return {id:p.id,value:blendRatings(cr,cr,c.gp)[key]}})].sort((a,b)=>b.value-a.value).findIndex(item=>item.id===player.id)+1;
   const bests=[
     {label:bestMode==="averages"?"PPG":"PTS",key:"pts" as const,tracked:()=>true},{label:bestMode==="averages"?"RPG":"REB",key:"reb" as const,tracked:()=>true},{label:bestMode==="averages"?"APG":"AST",key:"ast" as const,tracked:()=>true},{label:bestMode==="averages"?"TO/G":"TO",key:"turnovers" as const,tracked:()=>true},{label:bestMode==="averages"?"STL+BLK/G":"STL+BLK",key:"stocks" as const,tracked:(line:SundayLine)=>line.stocks!==undefined||line.stl!==undefined||line.blk!==undefined},
   ].map(item=>{const candidates=sessions.filter(({line})=>item.tracked(line)).map(({session,line})=>({date:session.date,value:item.key==="stocks"?(bestMode==="averages"?per(stocks(line),line.gp):stocks(line)):(bestMode==="averages"?per(line[item.key],line.gp):line[item.key])})).sort((a,b)=>Number(b.value)-Number(a.value));return {...item,best:candidates[0]}});
@@ -131,8 +130,8 @@ export default function MyPlayerCareerHub({player,roster,sundaySessions,official
   const choosePhoto=(file?:File)=>{if(!file)return;setPhotoFile(file);setPhotoZoom(1);setPhotoX(50);setPhotoY(50);setPhotoPreview(current=>{if(current)URL.revokeObjectURL(current);return URL.createObjectURL(file)})};
 
   const renderHero=(compact=false)=><section className={`careerHero level-${level.tone} ${compact?"compact":""}`}>
-    {!compact&&<div className="heroGlow"/>}<div className="careerPortrait">{player.photoUrl?<img src={player.photoUrl} alt={`${player.name} profile`}/>:<span>{player.name.split(" ").map(part=>part[0]).join("").slice(0,2)}</span>}<strong>{calculatedOverall}<small>{official?"OVR":"PROV"}</small></strong></div>
-    <div className="careerIdentity"><small>{player.position} · {archetype.role}</small><h1>{player.name}</h1>{!compact&&<p>“{player.nickname}”</p>}<div className="heroTags"><b>{official?`#${officialRank||"—"} OVR RANK`:`${career.gp}/20 TO OFFICIAL`}</b><b>{level.name}</b></div></div>
+    {!compact&&<div className="heroGlow"/>}<div className="careerPortrait">{player.photoUrl?<img src={player.photoUrl} alt={`${player.name} profile`}/>:<span>{player.name.split(" ").map(part=>part[0]).join("").slice(0,2)}</span>}<strong>{displayedOverall}<small>{official?"OVR":"PROV"}</small></strong></div>
+    <div className="careerIdentity"><small>{player.position} · {archetype.role}</small><h1>{player.name}</h1>{!compact&&<p>“{player.nickname}”</p>}<div className="heroTags"><b>{official?`#${overallRank||"—"} OVR RANK`:`${career.gp}/20 TO OFFICIAL`}</b><b>{level.name}</b></div></div>
     {isMyPlayer&&<button className="profileGear" onClick={()=>setShowEditor(true)} aria-label="Edit profile">⚙</button>}
   </section>;
 
@@ -150,7 +149,7 @@ export default function MyPlayerCareerHub({player,roster,sundaySessions,official
       <section className="latestCard panel"><div className="panelTop"><div><small>LATEST SUNDAY</small><h2>{sessions[0]?dateLabel(sessions[0].session.date,true):"Your next chapter"}</h2></div>{sessions[0]&&<strong>{sessions[0].line.wins}-{Math.max(0,sessions[0].line.gp-sessions[0].line.wins)}</strong>}</div>{sessions[0]?<div className="latestTotals">{[[sessions[0].line.pts,"PTS"],[sessions[0].line.reb,"REB"],[sessions[0].line.ast,"AST"],[sessions[0].line.turnovers,"TO"],[sessions[0].line.stocks===undefined&&sessions[0].line.stl===undefined&&sessions[0].line.blk===undefined?"—":stocks(sessions[0].line),"STL+BLK"]].map(([value,label])=><span key={label}><b>{value}</b>{label}</span>)}</div>:<p>Road to Greatness has begun. Published Sunday stats will appear here.</p>}</section>
     </main>}
 
-    {tab==="attributes"&&<main className="careerTabPage"><section className="panel attributePanel"><div className="panelTop"><div><small>PLAYER DNA</small><h2>Attribute Overview</h2></div><strong>{calculatedOverall} {official?"OVR":"PROVISIONAL"}</strong></div><div className="radarWrap"><svg viewBox="0 0 100 100" role="img" aria-label={`Scoring ${ratings.Scoring}, Rebounding ${ratings.Rebounding}, Playmaking ${ratings.Playmaking}, Defense ${ratings.Defense}, Ball Security ${ratings["Ball Security"]}`}><polygon points={baseRadarPoints(1)} className="radarOuter"/><polygon points={baseRadarPoints(.5)} className="radarInner"/><polygon points={radarPoints(Object.values(ratings))} className="radarValue"/></svg><div><b className="radarTop">SCORING</b><b className="radarRightTop">REBOUNDING</b><b className="radarRightBottom">PLAYMAKING</b><b className="radarLeftBottom">DEFENSE</b><b className="radarLeftTop">BALL SECURITY</b></div></div><div className="attributeList">{(Object.keys(ratings) as (keyof Ratings)[]).map(key=><details key={key}><summary><span><b>{key}</b><small>#{ratingRanks(key)} in league</small></span><i><em style={{width:`${(ratings[key]-50)/49*100}%`}}/></i><strong>{ratings[key]}</strong></summary><p>{key==="Scoring"?"PPG compared with the league.":key==="Rebounding"?"RPG compared with the league.":key==="Playmaking"?"APG compared with the league.":key==="Defense"?"STL+BLK per tracked game compared with the league.":"70% turnover avoidance per game and 30% assist-to-turnover efficiency."} Career ability is blended with Season 2 performance. Winning does not affect this rating.</p></details>)}</div><p className="ratingNote">OVR weights: Scoring 25% · Rebounding 20% · Playmaking 20% · Defense 20% · Ball Security 15%. Season 2 influence ramps up through 20 games.</p></section></main>}
+    {tab==="attributes"&&<main className="careerTabPage"><section className="panel attributePanel"><div className="panelTop"><div><small>PLAYER DNA</small><h2>Attribute Overview</h2></div><strong>{displayedOverall} {official?"OVR":"PROVISIONAL"}</strong></div><div className="radarWrap"><svg viewBox="0 0 100 100" role="img" aria-label={`Scoring ${ratings.Scoring}, Rebounding ${ratings.Rebounding}, Playmaking ${ratings.Playmaking}, Defense ${ratings.Defense}, Ball Security ${ratings["Ball Security"]}`}><polygon points={baseRadarPoints(1)} className="radarOuter"/><polygon points={baseRadarPoints(.5)} className="radarInner"/><polygon points={radarPoints(Object.values(ratings))} className="radarValue"/></svg><div><b className="radarTop">SCORING</b><b className="radarRightTop">REBOUNDING</b><b className="radarRightBottom">PLAYMAKING</b><b className="radarLeftBottom">DEFENSE</b><b className="radarLeftTop">BALL SECURITY</b></div></div><div className="attributeList">{(Object.keys(ratings) as (keyof Ratings)[]).map(key=><details key={key}><summary><span><b>{key}</b><small>#{ratingRanks(key)} in league</small></span><i><em style={{width:`${(ratings[key]-50)/49*100}%`}}/></i><strong>{ratings[key]}</strong></summary><p>{key==="Scoring"?"PPG compared with the league.":key==="Rebounding"?"RPG compared with the league.":key==="Playmaking"?"APG compared with the league.":key==="Defense"?"STL+BLK per tracked game compared with the league.":"70% turnover avoidance per game and 30% assist-to-turnover efficiency."} Season 2 and career are currently the same dataset. Winning does not affect this rating.</p></details>)}</div><p className="ratingNote">OVR weights: Scoring 25% · Rebounding 20% · Playmaking 20% · Defense 20% · Ball Security 15%. The same official OVR is used throughout the app.</p></section></main>}
 
     {tab==="career"&&<main className="careerTabPage"><section className={`panel legacyPanel level-${level.tone}`}><small>CAREER LEGACY</small><div className="legacyTitle"><div><h2>{level.name}</h2><p>{nextLevel?`${n(Math.max(0,nextLevel.min-hallProgress))}% to ${nextLevel.name}`:"Hall of Fame status secured"}</p></div><strong>{n(hallProgress)}%</strong></div><div className="goalTrack"><i style={{width:`${hallProgress}%`}}/></div><div className="hallSources"><button><b>+{n(milestonePoints)}%</b>Banner milestones</button><button><b>+{n(seasonAwardPoints)}%</b>Season awards</button><button><b>+{n(weeklyMvpPoints)}%</b>{weeklyMvpCount} Weekly MVP{weeklyMvpCount===1?"":"s"}</button></div><p className="hallMath">{n(milestonePoints)} + {n(seasonAwardPoints)} + {n(weeklyMvpPoints)} = {n(hallTotal)}% Hall Progress</p></section>
       <section className="panel cabinet"><div className="panelTop"><div><small>ACHIEVEMENT CABINET</small><h2>Earned Banners</h2></div>{MILESTONES.length>earned.length&&<button onClick={()=>setShowAllBanners(true)}>View All Banners</button>}</div>{earned.length?<div className="bannerTiles">{earned.map(item=><button key={`${item.key}-${item.threshold}`} onClick={()=>setReplayBanner(item)}><span>★</span><small>{item.category}</small><b>{item.name}</b><em>{item.threshold.toLocaleString()} · +{item.hallPoints}%</em></button>)}</div>:<p>Your cabinet is ready for its first banner.</p>}</section>
