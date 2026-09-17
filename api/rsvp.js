@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import hoopsgiving from "./_hoopsgiving.js";
 import { saveLeagueHistory } from "./_history.js";
 
 const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
@@ -6,6 +7,7 @@ const sql = postgres(connectionString, { ssl: "require", max: 1, idle_timeout: 2
 const allowedStatuses = new Set(["going", "maybe", "out"]);
 
 export default async function handler(request, response) {
+  if (request.query?.event === "hoopsgiving") return hoopsgiving(request, response);
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed" });
   const { runId, playerId, status, arrivalTime = "", note = "" } = request.body ?? {};
   if (typeof runId !== "string" || typeof playerId !== "string" || !allowedStatuses.has(status)) {

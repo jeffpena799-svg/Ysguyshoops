@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import Hoopsgiving from "./components/Hoopsgiving";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { hallProgressLevel } from "./hallProgress";
 
@@ -60,7 +61,7 @@ type SundaySession = {
 type PlayerStatBaseline = Record<string,{wins:number;losses:number;pts:number;reb:number;ast:number;turnovers:number}>;
 
 type View = "home" | "attendance" | "community" | "games" | "players" | "profile" | "compare" | "leaders" | "more" | "records" | "awards" | "seasons" | "calendar" | "rules" | "hof" | "timeline" | "voting" | "studio" | "commissioner";
-type AdminTab = "dashboard"|"review"|"rankings"|"runs"|"sessions"|"games"|"players"|"history"|"news"|"polls"|"awards"|"branding"|"data";
+type AdminTab = "dashboard"|"review"|"rankings"|"runs"|"sessions"|"games"|"players"|"history"|"news"|"polls"|"awards"|"branding"|"data"|"hoopsgiving";
 
 const initialPlayers: Player[] = [
   { id:"steve", name:"Steve", nickname:"Lefty", position:"G", wins:13, losses:5, pts:69, reb:62, ast:19, turnovers:8, awards:[], weeklyMvpCredits:[{id:"weekly-mvp-2025-history",season:"2025",count:2}], bio:"A high-impact two-way guard with elite rebounding from the perimeter." },
@@ -614,9 +615,11 @@ export default function App(){
         {!sessionToken?<CommissionerLogin onLogin={(token)=>{sessionStorage.setItem("yg-session",token);setSessionToken(token);setCloudStatus("saving");fetch("/api/league",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({data:{players,games,awards,seasons,news,runs,polls,history,branding,rankings,submissions,sundaySessions,statBaseline}})}).then(async response=>{if(!response.ok)throw new Error();const result=await response.json();setCloudUpdatedAt(result.updatedAt);setCloudStatus("cloud");setToast("Commissioner unlocked · league published");}).catch(()=>{setCloudStatus("error");setToast("Unlocked · first cloud save needs retry");}).finally(()=>setTimeout(()=>setToast(""),2400))}}/>:<>
         <div className="commissionerStatus"><div><span className={`syncDot ${cloudStatus}`}/><b>{cloudStatus==="saving"?"Saving…":cloudStatus==="cloud"?"Cloud connected":"Cloud attention needed"}</b><small>{cloudUpdatedAt?`Last cloud update ${new Date(cloudUpdatedAt).toLocaleString()}`:"Ready to create the first shared revision"}</small></div><button onClick={()=>{sessionStorage.removeItem("yg-session");setSessionToken("")}}>Lock Commissioner Mode</button></div>
         <div className="adminTabs">
+          <button className={adminTab==='hoopsgiving'?'active':''} onClick={()=>setAdminTab('hoopsgiving')}>Hoopsgiving</button>
           {([['dashboard','Command Center'],['review',`Review Center (${submissions.filter(item=>item.status==="pending").length})`],['rankings','Power Rankings'],['runs','RSVP Sundays'],['sessions','Weekly Stats'],['games','Game Data'],['players','Add / Edit Players'],['history','Add History'],['news','Community News'],['polls','Voting'],['awards','Awards'],['branding','League Branding'],['data','Backups']] as const).map(([k,l])=><button key={k} className={adminTab===k?'active':''} onClick={()=>setAdminTab(k)}>{l}</button>)}
         </div>
         {adminTab==='dashboard' && <CommissionerDashboard players={players} games={games} runs={runs} news={news} polls={polls} history={history} onOpen={setAdminTab}/>}
+        {adminTab==='hoopsgiving' && <Hoopsgiving players={players} token={sessionToken}/>}
         {adminTab==='review' && <ReviewCenter submissions={submissions} players={players} onChange={(next,nextPlayers)=>{setSubmissions(next);if(nextPlayers)setPlayers(nextPlayers);saveAll({submissions:next,players:nextPlayers??players});}}/>}
         {adminTab==='rankings' && <PowerRankingManager rankings={rankings} players={players} onChange={(next)=>{setRankings(next);saveAll({rankings:next});}}/>}
         {adminTab==='runs' && <RunManager runs={runs} onChange={(next)=>{setRuns(next);saveAll({runs:next});}} onConvert={(run)=>{if(games.some(game=>game.id===`game-${run.id}`))return alert("A scheduled game already exists for this Sunday.");const game:Game={id:`game-${run.id}`,date:formatRunDate(run.date),startTime:run.startTime,location:run.location,status:"scheduled",title:run.title,teamA:"Side A",scoreA:0,teamB:"Side B",scoreB:0,mvp:"",recap:""};const next=[...games,game];setGames(next);saveAll({games:next});setToast("Sunday added to scheduled games");setTimeout(()=>setToast(""),2000)}}/>}
