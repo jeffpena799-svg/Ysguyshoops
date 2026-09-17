@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import Hoopsgiving from "./Hoopsgiving";
 
 type PlayerLike={
   id:string;name:string;wins?:number;losses?:number;pts?:number;reb?:number;ast?:number;
@@ -82,6 +83,7 @@ export default function HomeDashboard(props:Props){
   };
 
   return <div className="homeClean67"><style>{css}</style>
+    <Hoopsgiving players={players} myPlayer={myPlayer} onChoosePlayer={onChoosePlayer}/>
     <header className="homeCleanHeader">
       <div className="homeCleanIdentity">
         <img src="/ys-guys-logo.svg" alt="Y's Guys"/>
