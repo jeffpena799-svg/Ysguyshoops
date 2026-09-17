@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const source = readFileSync(new URL('../api/hoopsgiving.js', import.meta.url), 'utf8')
+const source = readFileSync(new URL('../api/_hoopsgiving.js', import.meta.url), 'utf8')
   .replace(/^import .*;$/gm, '')
   .replace(/const sql = postgres\([^\n]+\);/, '')
   .replace('export default async function handler', 'async function handler');

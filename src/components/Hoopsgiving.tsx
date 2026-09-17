@@ -15,7 +15,7 @@ function HarvestLeaves({ side }: { side: "left" | "right" }) {
   </svg>;
 }
 async function api(token: string, body?: object) {
-  const response = await fetch(`/api/hoopsgiving${!body && token ? "?admin=1" : ""}`, { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const response = await fetch(`/api/rsvp?event=hoopsgiving${!body && token ? "&admin=1" : ""}`, { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || "Could not save Hoopsgiving");
   return result;
