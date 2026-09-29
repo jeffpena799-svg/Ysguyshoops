@@ -1,6 +1,9 @@
 const PLAYER_REPAIRS = new Map([
   ["player-1786929747481-la8po", { name: "Rico", firstSunday: "2026-08-16" }],
   ["player-1786222560378-w87or", { name: "Anwar", firstSunday: "2026-08-10" }],
+  ["player-1787712707577-504l9", { name: "Jef Sr.", firstSunday: "2026-08-30" }],
+  ["raul-maldonado", { name: "Raul Maldonado", firstSunday: "2026-08-30" }],
+  ["player-1785644131287-fw4p1", { name: "Sammy", firstSunday: null }],
 ]);
 
 const zeroBaseline = () => ({
@@ -44,6 +47,11 @@ function rebuildPlayer(player, lines) {
   return { ...profile, ...totals };
 }
 
+function hasNoRecordedStats(player) {
+  return [player.wins, player.losses, player.pts, player.reb, player.ast, player.turnovers, player.stocks, player.stl, player.blk, player.defensiveGp]
+    .every(value => number(value) === 0);
+}
+
 export function applyNewPlayerBaselineRepair(data) {
   if (!data || !Array.isArray(data.players) || !Array.isArray(data.sundaySessions)) return { data, changed: false };
 
@@ -52,13 +60,12 @@ export function applyNewPlayerBaselineRepair(data) {
   const players = data.players.map(player => {
     const repair = PLAYER_REPAIRS.get(player?.id);
     if (!repair || statBaseline[player.id]) return player;
-    const lines = publishedLinesForPlayer(data.sundaySessions, player.id, repair.firstSunday);
-    if (!lines.length) return player;
+    const lines = repair.firstSunday ? publishedLinesForPlayer(data.sundaySessions, player.id, repair.firstSunday) : [];
+    if (!lines.length && !hasNoRecordedStats(player)) return player;
     statBaseline[player.id] = zeroBaseline();
     changed = true;
-    return rebuildPlayer(player, lines);
+    return lines.length ? rebuildPlayer(player, lines) : player;
   });
 
   return { data: changed ? { ...data, players, statBaseline } : data, changed };
 }
-
