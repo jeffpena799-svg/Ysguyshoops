@@ -1,6 +1,7 @@
 import postgres from "postgres";
 import { isAuthorized } from "./_auth.js";
 import { compactLeagueStorage, preserveLeagueMedia, saveLeagueHistory } from "./_history.js";
+import { applyNewPlayerBaselineRepair } from "./_new-player-baseline-repair.js";
 
 const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
 const sql = postgres(connectionString, { ssl: "require", max: 1, idle_timeout: 20 });
@@ -62,9 +63,10 @@ export function applyHistoricalTrophyCredits(data) {
 }
 
 export function applyLeagueMigrations(data) {
-  const weeklyMvp = applyHistoricalWeeklyMvpCredits(data);
+  const baselineRepair = applyNewPlayerBaselineRepair(data);
+  const weeklyMvp = applyHistoricalWeeklyMvpCredits(baselineRepair.data);
   const trophies = applyHistoricalTrophyCredits(weeklyMvp.data);
-  return { data: trophies.data, changed: weeklyMvp.changed || trophies.changed };
+  return { data: trophies.data, changed: baselineRepair.changed || weeklyMvp.changed || trophies.changed };
 }
 
 async function ensureTable() {
