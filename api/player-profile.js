@@ -56,12 +56,21 @@ export default async function handler(request, response) {
           reb: 0,
           ast: 0,
           turnovers: 0,
+          stocks: 0,
+          defensiveGp: 0,
           awards: [],
           bio: "New to the Y's Guys universe.",
         };
 
         const nextPlayers = [...players, player];
-        const nextData = { ...data, players: nextPlayers };
+        const nextData = {
+          ...data,
+          players: nextPlayers,
+          statBaseline: {
+            ...(data.statBaseline || {}),
+            [player.id]: { wins: 0, losses: 0, pts: 0, reb: 0, ast: 0, turnovers: 0, stocks: 0, defensiveGp: 0 },
+          },
+        };
         const updated = await transaction`
           UPDATE league_state
           SET data = ${transaction.json(nextData)}, revision = revision + 1, updated_at = NOW()
