@@ -20,7 +20,7 @@ export function version77HallHistory(): Plugin {
       code = replaceRequired(
         code,
         '{view==="hof" && <HallHub players={players} polls={polls} awards={awards} seasons={seasons} records={records} updatedAt={cloudUpdatedAt} onOpen={openProfile}/>}',
-        '{view==="hof" && <HallHistory players={players} polls={polls} awards={awards} seasons={seasons} sundaySessions={sundaySessions} updatedAt={cloudUpdatedAt} onOpen={openProfile} getHallResume={(player)=>hallResume(player,awards)}/>}',
+        '{view==="hof" && <HallHistory players={players} polls={polls} awards={awards} seasons={seasons} seasonArchives={seasonArchives} activeSeasonName={activeSeasonName} sundaySessions={sundaySessions} updatedAt={cloudUpdatedAt} onOpen={openProfile} getHallResume={(player)=>hallResume(player,awards)}/>}',
       );
       return { code, map: null };
     },

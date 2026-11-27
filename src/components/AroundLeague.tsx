@@ -9,6 +9,7 @@ type RankingEntry={playerId?:string;playerName:string;rank:number|null;movement:
 type Snapshot={entries:RankingEntry[];week?:number;date?:string};
 type SortKey="name"|"gp"|"wins"|"losses"|"winPct"|"pts"|"reb"|"ast"|"turnovers"|"stocks";
 type StatMode="averages"|"totals";
+type StatScope="season"|"career";
 type Tab="rankings"|"stats"|"players";
 
 const gamesPlayed=(player:Player)=>Math.max(1,player.wins+player.losses);
@@ -19,12 +20,15 @@ const pct=(player:Player)=>player.wins+player.losses?Math.round((player.wins/(pl
 const initials=(name:string)=>name.split(/\s+/).map(part=>part[0]).join("").slice(0,2).toUpperCase();
 const movement=(value:number|null)=>value&&value>0?`▲ ${value}`:value&&value<0?`▼ ${Math.abs(value)}`:"—";
 
-export default function AroundLeague<T extends Player>({players,snapshot,onOpen,getOverall}:{players:T[];snapshot:Snapshot;onOpen:(player:T)=>void;getOverall:(player:T)=>number|null}){
+export default function AroundLeague<T extends Player>({players,seasonPlayers,activeSeasonName,snapshot,onOpen,getOverall}:{players:T[];seasonPlayers:T[];activeSeasonName:string;snapshot:Snapshot;onOpen:(player:T)=>void;getOverall:(player:T)=>number|null}){
   const [activeTab,setActiveTab]=useState<Tab>("rankings");
   const [statMode,setStatMode]=useState<StatMode>("averages");
+  const [statScope,setStatScope]=useState<StatScope>("season");
   const [sortKey,setSortKey]=useState<SortKey>("pts");
   const [direction,setDirection]=useState<"asc"|"desc">("desc");
   const [query,setQuery]=useState("");
+  const displayPlayers=statScope==="season"?seasonPlayers:players;
+  const careerById=useMemo(()=>new Map(players.map(player=>[player.id,player])),[players]);
   const rankingByPlayer=useMemo(()=>new Map(snapshot.entries.filter(entry=>entry.playerId).map(entry=>[entry.playerId!,entry])),[snapshot]);
   const rankingRows=useMemo(()=>[...snapshot.entries].filter(entry=>!entry.dnp&&entry.rank!==null).sort((a,b)=>(a.rank??999)-(b.rank??999)),[snapshot]);
   const topEntry=rankingRows[0];
@@ -38,7 +42,7 @@ export default function AroundLeague<T extends Player>({players,snapshot,onOpen,
     return statMode==="averages"?avg(player[key],player):player[key];
   };
   const statRows=useMemo(()=>{
-    const rows=[...players];
+    const rows=[...displayPlayers];
     rows.sort((a,b)=>{
       const left=sortKey==="name"?a.name.toLowerCase():statValue(a,sortKey);
       const right=sortKey==="name"?b.name.toLowerCase():statValue(b,sortKey);
@@ -46,10 +50,10 @@ export default function AroundLeague<T extends Player>({players,snapshot,onOpen,
       return direction==="asc"?Number(left)-Number(right):Number(right)-Number(left);
     });
     return rows;
-  },[players,sortKey,direction,statMode]);
+  },[displayPlayers,sortKey,direction,statMode]);
   const communityPlayers=useMemo(()=>players.filter(player=>`${player.name} ${player.nickname}`.toLowerCase().includes(query.trim().toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name)),[players,query]);
   const leaders=useMemo(()=>{
-    const best=(value:(player:T)=>number)=>[...players].sort((a,b)=>value(b)-value(a))[0];
+    const best=(value:(player:T)=>number)=>[...displayPlayers].sort((a,b)=>value(b)-value(a))[0];
     return statMode==="averages"?[
       {label:"PPG",player:best(player=>avg(player.pts,player)),value:(player:T)=>avg(player.pts,player)},
       {label:"RPG",player:best(player=>avg(player.reb,player)),value:(player:T)=>avg(player.reb,player)},
@@ -61,7 +65,7 @@ export default function AroundLeague<T extends Player>({players,snapshot,onOpen,
       {label:"ASSISTS",player:best(player=>player.ast),value:(player:T)=>player.ast},
       {label:"STL+BLK",player:best(player=>defensiveTotal(player)),value:(player:T)=>defensiveTotal(player)},
     ];
-  },[players,statMode]);
+  },[displayPlayers,statMode]);
   const setSort=(key:SortKey)=>{if(sortKey===key)setDirection(current=>current==="desc"?"asc":"desc");else{setSortKey(key);setDirection(key==="name"?"asc":"desc")}};
   const arrow=(key:SortKey)=>sortKey===key?(direction==="desc"?" ↓":" ↑"):"";
   const tabs:[Tab,string,string][]=[["rankings","Power Rankings","RANK"],["stats","League Stats","STATS"],["players","Players","ROSTER"]];
@@ -79,6 +83,7 @@ export default function AroundLeague<T extends Player>({players,snapshot,onOpen,
     <nav className="atlTabs" aria-label="Around the League views">{tabs.map(([key,label,short])=><button className={activeTab===key?"active":""} onClick={()=>setActiveTab(key)} key={key}><small>{short}</small><b>{label}</b></button>)}</nav>
 
     {activeTab==="rankings"&&<section className="atlTabPanel">
+      {!topEntry&&<div className="atlSeasonEmpty"><small>{activeSeasonName.toUpperCase()}</small><h2>Power rankings start fresh.</h2><p>The Commissioner’s first {activeSeasonName} board will appear here after it is published.</p></div>}
       {topEntry&&<button className="atlTopRank" onClick={()=>topPlayer&&onOpen(topPlayer)} disabled={!topPlayer}>
         <div className="atlTopPortrait">{topPlayer?.photoUrl?<img src={topPlayer.photoUrl} alt=""/>:<span>{initials(topEntry.playerName)}</span>}<strong>#1</strong></div>
         <div className="atlTopCopy"><small>TOP OF THE POWER BOARD</small><h2>{topEntry.playerName}</h2><p>{topEntry.reason||"The league's current standard."}</p><div><b>{topPlayer?`${topPlayer.wins}-${topPlayer.losses}`:"—"}<small>RECORD</small></b><b>{topPlayer?`${pct(topPlayer)}%`:"—"}<small>WIN RATE</small></b><b>{topPlayer?getOverall(topPlayer)??"PROV":"—"}<small>OVERALL</small></b></div></div>
@@ -89,16 +94,18 @@ export default function AroundLeague<T extends Player>({players,snapshot,onOpen,
     </section>}
 
     {activeTab==="stats"&&<section className="atlTabPanel atlStatsPanel">
-      <div className="atlBoardHeader"><div><small>LEAGUE LEADERS</small><h2>Top of the stat sheet</h2></div><span>{statMode==="averages"?"Per-game averages":"Career totals"} · live data</span></div>
-      <div className="atlLeaderStrip">{leaders.map(item=>item.player&&<button onClick={()=>onOpen(item.player)} key={item.label}><small>{item.label}</small><strong>{item.value(item.player)}</strong><span>{item.player.name}</span></button>)}</div>
-      <div className="atlStatsToolbar"><div><small>FULL STAT BOARD</small><h2>{statMode==="averages"?"Per-game averages":"Career totals"}</h2></div><div className="atlStatMode" role="group" aria-label="Choose stat display"><button className={statMode==="averages"?"active":""} aria-pressed={statMode==="averages"} onClick={()=>setStatMode("averages")}>AVERAGES</button><button className={statMode==="totals"?"active":""} aria-pressed={statMode==="totals"} onClick={()=>setStatMode("totals")}>TOTALS</button></div><span>Tap a heading to sort</span></div>
+      <div className="atlBoardHeader"><div><small>{statScope==="season"?activeSeasonName.toUpperCase():"ALL-TIME CAREER"} LEADERS</small><h2>Top of the stat sheet</h2></div><span>{statMode==="averages"?"Per-game averages":"Totals"} · live data</span></div>
+      <div className="atlLeaderStrip">{leaders.map(item=>item.player&&<button onClick={()=>onOpen(careerById.get(item.player.id)??item.player)} key={item.label}><small>{item.label}</small><strong>{item.value(item.player)}</strong><span>{item.player.name}</span></button>)}</div>
+      <div className="atlScopeMode" role="group" aria-label="Choose statistics scope"><button className={statScope==="season"?"active":""} aria-pressed={statScope==="season"} onClick={()=>setStatScope("season")}>{activeSeasonName.toUpperCase()}</button><button className={statScope==="career"?"active":""} aria-pressed={statScope==="career"} onClick={()=>setStatScope("career")}>CAREER</button></div>
+      <div className="atlStatsToolbar"><div><small>FULL STAT BOARD</small><h2>{statScope==="season"?activeSeasonName:"Career"} {statMode==="averages"?"averages":"totals"}</h2></div><div className="atlStatMode" role="group" aria-label="Choose stat display"><button className={statMode==="averages"?"active":""} aria-pressed={statMode==="averages"} onClick={()=>setStatMode("averages")}>AVERAGES</button><button className={statMode==="totals"?"active":""} aria-pressed={statMode==="totals"} onClick={()=>setStatMode("totals")}>TOTALS</button></div><span>Tap a heading to sort</span></div>
       <p className="atlLandscapeHint">Rotate your phone for the complete landscape stat board.</p>
-      <div className="atlTableWrap atlStatTableWrap" role="region" aria-label={`${statMode==="averages"?"Average":"Total"} league statistics`} tabIndex={0}><table className="atlTable atlStatTable"><thead><tr><th><button onClick={()=>setSort("name")}>Player{arrow("name")}</button></th>{statColumns.map(column=><th key={column.key}><button onClick={()=>setSort(column.key)}>{statMode==="averages"?column.average:column.total}{arrow(column.key)}</button></th>)}</tr></thead><tbody>{statRows.map((player,index)=><tr key={player.id} onClick={()=>onOpen(player)}><td><span><em>{index+1}</em>{player.photoUrl?<img src={player.photoUrl} alt=""/>:<i>{initials(player.name)}</i>}<b>{player.name}</b></span></td>{statColumns.map(column=><td key={column.key}>{statValue(player,column.key)}</td>)}</tr>)}</tbody></table></div>
+      <div className="atlTableWrap atlStatTableWrap" role="region" aria-label={`${statMode==="averages"?"Average":"Total"} ${statScope} statistics`} tabIndex={0}><table className="atlTable atlStatTable"><thead><tr><th><button onClick={()=>setSort("name")}>Player{arrow("name")}</button></th>{statColumns.map(column=><th key={column.key}><button onClick={()=>setSort(column.key)}>{statMode==="averages"?column.average:column.total}{arrow(column.key)}</button></th>)}</tr></thead><tbody>{statRows.map((player,index)=><tr key={player.id} onClick={()=>onOpen(careerById.get(player.id)??player)}><td><span><em>{index+1}</em>{player.photoUrl?<img src={player.photoUrl} alt=""/>:<i>{initials(player.name)}</i>}<b>{player.name}</b></span></td>{statColumns.map(column=><td key={column.key}>{statValue(player,column.key)}</td>)}</tr>)}</tbody></table></div>
     </section>}
 
     {activeTab==="players"&&<section className="atlTabPanel">
       <div className="atlBoardHeader atlPlayersTitle"><div><small>LEAGUE ROSTER</small><h2>Meet the players</h2></div><input aria-label="Search players" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search name or nickname…"/></div>
       <div className="atlPlayerGrid">{communityPlayers.map(player=>{const rank=rankingByPlayer.get(player.id)?.rank;const overall=getOverall(player);return <button className="atlPlayerCard" key={player.id} onClick={()=>onOpen(player)}><div className="atlPlayerHero">{player.photoUrl?<img src={player.photoUrl} alt=""/>:<span>{initials(player.name)}</span>}<div><small>{rank?`#${rank} IN LEAGUE`:"Y'S GUYS PLAYER"}</small><h3>{player.name}</h3><p>{player.position} · “{player.nickname}”</p></div>{overall!==null&&<strong>{overall}<small>OVR</small></strong>}</div><div className="atlPlayerStats"><span><b>{player.wins}-{player.losses}</b><small>RECORD</small></span><span><b>{pct(player)}%</b><small>WIN %</small></span><span><b>{avg(player.pts,player)}</b><small>PPG</small></span><span><b>{defensiveAvg(player)}</b><small>STL+BLK/G</small></span></div><footer>OPEN PLAYER PROFILE <i>→</i></footer></button>})}</div>
     </section>}
+    <style>{`.atlScopeMode{display:grid;grid-template-columns:1fr 1fr;max-width:360px;margin:4px 0 0;padding:4px;border:1px solid #c9d2dd;border-radius:14px;background:#f4f6f8}.atlScopeMode button{min-height:42px;border:0;border-radius:10px;background:transparent;color:#66768a;font-weight:1000;letter-spacing:.08em}.atlScopeMode button.active{background:#0a2d5e;color:#fff}.atlSeasonEmpty{padding:26px;border:1px solid #d5b75f;border-radius:20px;background:linear-gradient(135deg,#071b39,#0a2d5e);color:#fff}.atlSeasonEmpty small{color:#d8bc74;font-weight:1000;letter-spacing:.12em}.atlSeasonEmpty h2{margin:6px 0;font-size:28px}.atlSeasonEmpty p{margin:0;color:#cbd6e3}`}</style>
   </div>;
 }
