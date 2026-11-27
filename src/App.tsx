@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Hoopsgiving from "./components/Hoopsgiving";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { hallProgressLevel } from "./hallProgress";
+import { applyArchivedSessionCorrections, buildSeasonRoster, DEFAULT_SEASON_SYSTEM, type SeasonArchive, type SeasonSystem } from "./seasonSystem";
 
 const NAVY = "#0A2D5E";
 const GOLD = "#C7A24D";
@@ -46,7 +47,7 @@ type HistoryEntry = {
 };
 type LeagueBranding = { logoUrl?:string; wordmark:string; tagline:string };
 type RankingEntry = { playerId?:string; playerName:string; rank:number|null; movement:number|null; dnp:boolean; reason:string };
-type PowerRankingSnapshot = { id:string; week:number; date:string; publishedAt:string; entries:RankingEntry[] };
+type PowerRankingSnapshot = { id:string; week:number; date:string; publishedAt:string; entries:RankingEntry[]; seasonId?:string };
 type LeagueSubmission = {
   id:string; type:"profile-photo"|"suggestion"; playerId:string; message:string; imageUrl?:string;
   status:"pending"|"approved"|"rejected"|"archived"; createdAt:string;
@@ -56,7 +57,7 @@ type SundayStatLine = {
 };
 type SundaySession = {
   id:string; date:string; notes:string; status:"published"; lines:SundayStatLine[];
-  sourceImageUrl?:string; createdAt:string; updatedAt:string;
+  sourceImageUrl?:string; createdAt:string; updatedAt:string; seasonId?:string;
 };
 type PlayerStatBaseline = Record<string,{wins:number;losses:number;pts:number;reb:number;ast:number;turnovers:number}>;
 
@@ -181,7 +182,7 @@ const HALL_MILESTONES = {
   ],
 } as const;
 
-type LeagueData = { players: Player[]; games: Game[]; awards: Award[]; seasons: typeof initialSeasons; news:NewsStory[]; runs:SundayRun[]; polls:LeaguePoll[]; history:HistoryEntry[]; branding:LeagueBranding; rankings:PowerRankingSnapshot[]; submissions:LeagueSubmission[]; sundaySessions:SundaySession[]; statBaseline:PlayerStatBaseline };
+type LeagueData = { players: Player[]; games: Game[]; awards: Award[]; seasons: typeof initialSeasons; news:NewsStory[]; runs:SundayRun[]; polls:LeaguePoll[]; history:HistoryEntry[]; branding:LeagueBranding; rankings:PowerRankingSnapshot[]; submissions:LeagueSubmission[]; sundaySessions:SundaySession[]; statBaseline:PlayerStatBaseline; seasonSystem?:SeasonSystem; seasonArchives?:SeasonArchive[] };
 
 function gp(p: Player){ return p.wins+p.losses; }
 function pct(p: Player){ return gp(p) ? Math.round((p.wins/gp(p))*1000)/10 : 0; }
@@ -408,6 +409,8 @@ export default function App(){
   const [submissions,setSubmissions]=useState<LeagueSubmission[]>(()=>loadData("yg-submissions",initialSubmissions));
   const [sundaySessions,setSundaySessions]=useState<SundaySession[]>(()=>loadData("yg-sunday-sessions",initialSundaySessions));
   const [statBaseline,setStatBaseline]=useState<PlayerStatBaseline>(()=>loadData("yg-stat-baseline",makeStatBaseline(loadData("yg-players",initialPlayers))));
+  const [seasonSystem,setSeasonSystem]=useState<SeasonSystem>(()=>loadData("yg-season-system",DEFAULT_SEASON_SYSTEM));
+  const [seasonArchives,setSeasonArchives]=useState<SeasonArchive[]>(()=>loadData("yg-season-archives",[]));
   const [adminTab,setAdminTab]=useState<AdminTab>("dashboard");
   const [toast,setToast]=useState("");
   const [sessionToken,setSessionToken]=useState(()=>sessionStorage.getItem("yg-session")??"");
@@ -415,9 +418,9 @@ export default function App(){
   const [cloudUpdatedAt,setCloudUpdatedAt]=useState<string|null>(null);
 
   const saveAll=(next?:Partial<LeagueData>)=>{
-    const p=next?.players??players,g=next?.games??games,a=next?.awards??awards,se=next?.seasons??seasons,n=next?.news??news,r=next?.runs??runs,po=next?.polls??polls,h=next?.history??history,b=next?.branding??branding,pr=next?.rankings??rankings,su=next?.submissions??submissions,ss=next?.sundaySessions??sundaySessions,sb=next?.statBaseline??statBaseline;
-    localStorage.setItem("yg-players",JSON.stringify(p));localStorage.setItem("yg-games",JSON.stringify(g));localStorage.setItem("yg-awards",JSON.stringify(a));localStorage.setItem("yg-seasons",JSON.stringify(se));localStorage.setItem("yg-news",JSON.stringify(n));localStorage.setItem("yg-runs",JSON.stringify(r));localStorage.setItem("yg-polls",JSON.stringify(po));localStorage.setItem("yg-history",JSON.stringify(h));localStorage.setItem("yg-branding",JSON.stringify(b));localStorage.setItem("yg-rankings",JSON.stringify(pr));localStorage.setItem("yg-submissions",JSON.stringify(su));localStorage.setItem("yg-sunday-sessions",JSON.stringify(ss));localStorage.setItem("yg-stat-baseline",JSON.stringify(sb));
-    const data={players:p,games:g,awards:a,seasons:se,news:n,runs:r,polls:po,history:h,branding:b,rankings:pr,submissions:su,sundaySessions:ss,statBaseline:sb};
+    const p=next?.players??players,g=next?.games??games,a=next?.awards??awards,se=next?.seasons??seasons,n=next?.news??news,r=next?.runs??runs,po=next?.polls??polls,h=next?.history??history,b=next?.branding??branding,pr=next?.rankings??rankings,su=next?.submissions??submissions,ss=next?.sundaySessions??sundaySessions,sb=next?.statBaseline??statBaseline,sys=next?.seasonSystem??seasonSystem,sa=next?.seasonArchives??seasonArchives;
+    localStorage.setItem("yg-players",JSON.stringify(p));localStorage.setItem("yg-games",JSON.stringify(g));localStorage.setItem("yg-awards",JSON.stringify(a));localStorage.setItem("yg-seasons",JSON.stringify(se));localStorage.setItem("yg-news",JSON.stringify(n));localStorage.setItem("yg-runs",JSON.stringify(r));localStorage.setItem("yg-polls",JSON.stringify(po));localStorage.setItem("yg-history",JSON.stringify(h));localStorage.setItem("yg-branding",JSON.stringify(b));localStorage.setItem("yg-rankings",JSON.stringify(pr));localStorage.setItem("yg-submissions",JSON.stringify(su));localStorage.setItem("yg-sunday-sessions",JSON.stringify(ss));localStorage.setItem("yg-stat-baseline",JSON.stringify(sb));localStorage.setItem("yg-season-system",JSON.stringify(sys));localStorage.setItem("yg-season-archives",JSON.stringify(sa));
+    const data={players:p,games:g,awards:a,seasons:se,news:n,runs:r,polls:po,history:h,branding:b,rankings:pr,submissions:su,sundaySessions:ss,statBaseline:sb,seasonSystem:sys,seasonArchives:sa};
     if(sessionToken){
       setCloudStatus("saving");
       fetch("/api/league",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${sessionToken}`},body:JSON.stringify({data})})
@@ -429,14 +432,14 @@ export default function App(){
     }
   };
   const hydrateData=(data:LeagueData)=>{
-    const nextNews=data.news??initialNews,nextRuns=data.runs??initialRuns,nextPolls=data.polls??initialPolls,nextHistory=data.history??initialHistory,nextBranding=data.branding??initialBranding,nextRankings=data.rankings??initialRankings,nextSubmissions=data.submissions??initialSubmissions,nextGames=normalizeLegacyGames(data.games),nextSessions=data.sundaySessions??initialSundaySessions,nextBaseline=data.statBaseline??makeStatBaseline(data.players);
-    setPlayers(data.players);setGames(nextGames);setAwards(data.awards);setSeasons(data.seasons);setNews(nextNews);setRuns(nextRuns);setPolls(nextPolls);setHistory(nextHistory);setBranding(nextBranding);setRankings(nextRankings);setSubmissions(nextSubmissions);setSundaySessions(nextSessions);setStatBaseline(nextBaseline);
-    localStorage.setItem("yg-players",JSON.stringify(data.players));localStorage.setItem("yg-games",JSON.stringify(nextGames));localStorage.setItem("yg-awards",JSON.stringify(data.awards));localStorage.setItem("yg-seasons",JSON.stringify(data.seasons));localStorage.setItem("yg-news",JSON.stringify(nextNews));localStorage.setItem("yg-runs",JSON.stringify(nextRuns));localStorage.setItem("yg-polls",JSON.stringify(nextPolls));localStorage.setItem("yg-history",JSON.stringify(nextHistory));localStorage.setItem("yg-branding",JSON.stringify(nextBranding));localStorage.setItem("yg-rankings",JSON.stringify(nextRankings));localStorage.setItem("yg-submissions",JSON.stringify(nextSubmissions));localStorage.setItem("yg-sunday-sessions",JSON.stringify(nextSessions));localStorage.setItem("yg-stat-baseline",JSON.stringify(nextBaseline));
+    const nextNews=data.news??initialNews,nextRuns=data.runs??initialRuns,nextPolls=data.polls??initialPolls,nextHistory=data.history??initialHistory,nextBranding=data.branding??initialBranding,nextRankings=data.rankings??initialRankings,nextSubmissions=data.submissions??initialSubmissions,nextGames=normalizeLegacyGames(data.games),nextSessions=data.sundaySessions??initialSundaySessions,nextBaseline=data.statBaseline??makeStatBaseline(data.players),nextSystem=data.seasonSystem??DEFAULT_SEASON_SYSTEM,nextArchives=data.seasonArchives??[];
+    setPlayers(data.players);setGames(nextGames);setAwards(data.awards);setSeasons(data.seasons);setNews(nextNews);setRuns(nextRuns);setPolls(nextPolls);setHistory(nextHistory);setBranding(nextBranding);setRankings(nextRankings);setSubmissions(nextSubmissions);setSundaySessions(nextSessions);setStatBaseline(nextBaseline);setSeasonSystem(nextSystem);setSeasonArchives(nextArchives);
+    localStorage.setItem("yg-players",JSON.stringify(data.players));localStorage.setItem("yg-games",JSON.stringify(nextGames));localStorage.setItem("yg-awards",JSON.stringify(data.awards));localStorage.setItem("yg-seasons",JSON.stringify(data.seasons));localStorage.setItem("yg-news",JSON.stringify(nextNews));localStorage.setItem("yg-runs",JSON.stringify(nextRuns));localStorage.setItem("yg-polls",JSON.stringify(nextPolls));localStorage.setItem("yg-history",JSON.stringify(nextHistory));localStorage.setItem("yg-branding",JSON.stringify(nextBranding));localStorage.setItem("yg-rankings",JSON.stringify(nextRankings));localStorage.setItem("yg-submissions",JSON.stringify(nextSubmissions));localStorage.setItem("yg-sunday-sessions",JSON.stringify(nextSessions));localStorage.setItem("yg-stat-baseline",JSON.stringify(nextBaseline));localStorage.setItem("yg-season-system",JSON.stringify(nextSystem));localStorage.setItem("yg-season-archives",JSON.stringify(nextArchives));
   };
   const replaceData=(data:LeagueData)=>{hydrateData(data);saveAll(data);};
   const resetData=()=>{
     if(!confirm("Reset all locally saved changes and restore the original league data?")) return;
-    replaceData({players:initialPlayers,games:initialGames,awards:initialAwards,seasons:initialSeasons,news:initialNews,runs:initialRuns,polls:initialPolls,history:initialHistory,branding:initialBranding,rankings:initialRankings,submissions:initialSubmissions,sundaySessions:initialSundaySessions,statBaseline:makeStatBaseline(initialPlayers)});
+    replaceData({players:initialPlayers,games:initialGames,awards:initialAwards,seasons:initialSeasons,news:initialNews,runs:initialRuns,polls:initialPolls,history:initialHistory,branding:initialBranding,rankings:initialRankings,submissions:initialSubmissions,sundaySessions:initialSundaySessions,statBaseline:makeStatBaseline(initialPlayers),seasonSystem:DEFAULT_SEASON_SYSTEM,seasonArchives:[]});
   };
 
   const filtered=useMemo(()=>players.filter(p => `${p.name} ${p.nickname}`.toLowerCase().includes(search.toLowerCase())),[players,search]);
@@ -464,7 +467,11 @@ export default function App(){
     {category:"League",label:"Closest Game",holder:[...finalGames].sort((a,b)=>Math.abs(a.scoreA-a.scoreB)-Math.abs(b.scoreA-b.scoreB))[0]?.title??"—",value:finalGames.length?`${Math.min(...finalGames.map(g=>Math.abs(g.scoreA-g.scoreB)))} points`:"—",date:"Calculated automatically"},
   ],[players,finalGames,pointsLeader,reboundsLeader,assistsLeader,winLeader]);
   const myPlayer=players.find(player=>player.id===myPlayerId);
-  const latestRanking=rankings[0]??initialRankings[0];
+  const activeSeasonId=seasonSystem.activeSeasonId;
+  const activeSeasonName=seasonSystem.activeSeasonName;
+  const activeSeasonPlayers=useMemo(()=>buildSeasonRoster(players,sundaySessions,activeSeasonId),[players,sundaySessions,activeSeasonId]);
+  const activeSeasonRankings=useMemo(()=>rankings.filter(ranking=>ranking.seasonId===activeSeasonId).sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt)),[rankings,activeSeasonId]);
+  const latestRanking=activeSeasonRankings[0]??{id:`${activeSeasonId}-unranked`,week:0,date:"",publishedAt:"",entries:[]};
   const chooseMyPlayer=(id:string)=>{setMyPlayerId(id);if(id)localStorage.setItem("yg-my-player",id);else localStorage.removeItem("yg-my-player");};
 
   const go=(next:View)=>{ setView(next); window.scrollTo({top:0,behavior:"smooth"}); };
@@ -511,10 +518,13 @@ export default function App(){
     setSelected(result.players.find((player:Player)=>player.id===playerId)??null);setCloudUpdatedAt(result.updatedAt);setCloudStatus("cloud");setToast("My Player updated everywhere");setTimeout(()=>setToast(""),2000);
   };
   const updateSundaySessions=(nextSessions:SundaySession[])=>{
-    const nextPlayers=applySundayLedger(players,statBaseline,nextSessions,games);
-    setSundaySessions(nextSessions);setPlayers(nextPlayers);
+    const existingSeason=new Map(sundaySessions.map(session=>[session.id,session.seasonId]));
+    const taggedSessions=nextSessions.map(session=>({...session,seasonId:session.seasonId??existingSeason.get(session.id)??activeSeasonId}));
+    const nextPlayers=applySundayLedger(players,statBaseline,taggedSessions,games);
+    const nextArchives=applyArchivedSessionCorrections(seasonArchives,sundaySessions,taggedSessions);
+    setSundaySessions(taggedSessions);setPlayers(nextPlayers);setSeasonArchives(nextArchives);
     if(selected)setSelected(nextPlayers.find(player=>player.id===selected.id)??null);
-    saveAll({sundaySessions:nextSessions,players:nextPlayers,statBaseline});
+    saveAll({sundaySessions:taggedSessions,players:nextPlayers,statBaseline,seasonArchives:nextArchives});
   };
 
   useEffect(()=>{
@@ -575,7 +585,7 @@ export default function App(){
       </Page>}
 
       {view==="profile" && selected && <PlayerUniverseProfile
-        player={selected} roster={players} games={games} sundaySessions={sundaySessions}
+        player={selected} roster={players} seasonPlayer={activeSeasonPlayers.find(player=>player.id===selected.id)??selected} seasonRoster={activeSeasonPlayers} activeSeasonName={activeSeasonName} games={games} sundaySessions={sundaySessions}
         nextRun={nextRun} officialAwards={awards}
         rank={players.slice().sort((a,b)=>(overallRating(b,players)??0)-(overallRating(a,players)??0)).findIndex(p=>p.id===selected.id)+1}
         isMyPlayer={selected.id===myPlayerId} onRsvp={submitRsvp} onPhotoSave={updateOwnPhoto}
@@ -612,7 +622,7 @@ export default function App(){
       {view==="hof" && <HallHub players={players} awards={awards} seasons={seasons} records={records} updatedAt={cloudUpdatedAt} onOpen={openProfile}/>}
 
       {view==="commissioner" && <Page eyebrow="COMMISSIONER MODE · v6.3.1" title="Run the entire league universe." subtitle="Publish games, profiles, photos and community stories for every visitor.">
-        {!sessionToken?<CommissionerLogin onLogin={(token)=>{sessionStorage.setItem("yg-session",token);setSessionToken(token);setCloudStatus("saving");fetch("/api/league",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({data:{players,games,awards,seasons,news,runs,polls,history,branding,rankings,submissions,sundaySessions,statBaseline}})}).then(async response=>{if(!response.ok)throw new Error();const result=await response.json();setCloudUpdatedAt(result.updatedAt);setCloudStatus("cloud");setToast("Commissioner unlocked · league published");}).catch(()=>{setCloudStatus("error");setToast("Unlocked · first cloud save needs retry");}).finally(()=>setTimeout(()=>setToast(""),2400))}}/>:<>
+        {!sessionToken?<CommissionerLogin onLogin={(token)=>{sessionStorage.setItem("yg-session",token);setSessionToken(token);setCloudStatus("saving");fetch("/api/league",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({data:{players,games,awards,seasons,news,runs,polls,history,branding,rankings,submissions,sundaySessions,statBaseline,seasonSystem,seasonArchives}})}).then(async response=>{if(!response.ok)throw new Error();const result=await response.json();setCloudUpdatedAt(result.updatedAt);setCloudStatus("cloud");setToast("Commissioner unlocked · league published");}).catch(()=>{setCloudStatus("error");setToast("Unlocked · first cloud save needs retry");}).finally(()=>setTimeout(()=>setToast(""),2400))}}/>:<>
         <div className="commissionerStatus"><div><span className={`syncDot ${cloudStatus}`}/><b>{cloudStatus==="saving"?"Saving…":cloudStatus==="cloud"?"Cloud connected":"Cloud attention needed"}</b><small>{cloudUpdatedAt?`Last cloud update ${new Date(cloudUpdatedAt).toLocaleString()}`:"Ready to create the first shared revision"}</small></div><button onClick={()=>{sessionStorage.removeItem("yg-session");setSessionToken("")}}>Lock Commissioner Mode</button></div>
         <div className="adminTabs">
           <button className={adminTab==='hoopsgiving'?'active':''} onClick={()=>setAdminTab('hoopsgiving')}>Hoopsgiving</button>
@@ -621,7 +631,7 @@ export default function App(){
         {adminTab==='dashboard' && <CommissionerDashboard players={players} games={games} runs={runs} news={news} polls={polls} history={history} onOpen={setAdminTab}/>}
         {adminTab==='hoopsgiving' && <Hoopsgiving players={players} token={sessionToken}/>}
         {adminTab==='review' && <ReviewCenter submissions={submissions} players={players} onChange={(next,nextPlayers)=>{setSubmissions(next);if(nextPlayers)setPlayers(nextPlayers);saveAll({submissions:next,players:nextPlayers??players});}}/>}
-        {adminTab==='rankings' && <PowerRankingManager rankings={rankings} players={players} onChange={(next)=>{setRankings(next);saveAll({rankings:next});}}/>}
+        {adminTab==='rankings' && <PowerRankingManager rankings={activeSeasonRankings} players={players} onChange={(next)=>{const tagged=next.map(ranking=>({...ranking,seasonId:activeSeasonId}));const merged=[...tagged,...rankings.filter(ranking=>ranking.seasonId!==activeSeasonId)];setRankings(merged);saveAll({rankings:merged});}}/>}
         {adminTab==='runs' && <RunManager runs={runs} onChange={(next)=>{setRuns(next);saveAll({runs:next});}} onConvert={(run)=>{if(games.some(game=>game.id===`game-${run.id}`))return alert("A scheduled game already exists for this Sunday.");const game:Game={id:`game-${run.id}`,date:formatRunDate(run.date),startTime:run.startTime,location:run.location,status:"scheduled",title:run.title,teamA:"Side A",scoreA:0,teamB:"Side B",scoreB:0,mvp:"",recap:""};const next=[...games,game];setGames(next);saveAll({games:next});setToast("Sunday added to scheduled games");setTimeout(()=>setToast(""),2000)}}/>}
         {adminTab==='sessions' && <SundaySessionManager sessions={sundaySessions} players={players} sessionToken={sessionToken} onChange={updateSundaySessions}/>}
         {adminTab==='games' && <GameManager games={games} players={players} onSave={(game,previous)=>{const nextGames=previous?games.map(g=>g.id===game.id?game:g):[...games,game];const nextPlayers=applyOverallMovement(players,applyBoxScoreDelta(players,previous,game),nextGames);setGames(nextGames);setPlayers(nextPlayers);saveAll({games:nextGames,players:nextPlayers});}} onDelete={(game)=>{const nextGames=games.filter(g=>g.id!==game.id);const nextPlayers=applyOverallMovement(players,applyBoxScoreDelta(players,game,undefined),nextGames);setGames(nextGames);setPlayers(nextPlayers);saveAll({games:nextGames,players:nextPlayers});}}/>}
@@ -631,7 +641,7 @@ export default function App(){
         {adminTab==='polls' && <PollManager polls={polls} players={players} onChange={(next)=>{const nextPlayers=syncWeeklyMvpPollCredits(players,next);setPolls(next);setPlayers(nextPlayers);saveAll({polls:next,players:nextPlayers});}}/>}
         {adminTab==='awards' && <AwardManager awards={awards} players={players} onChange={(next)=>{setAwards(next);saveAll({awards:next});}}/>}
         {adminTab==='branding' && <BrandManager branding={branding} onChange={(next)=>{setBranding(next);saveAll({branding:next});}}/>}
-        {adminTab==='data' && <DataTools data={{players,games,awards,seasons,news,runs,polls,history,branding,rankings,submissions,sundaySessions,statBaseline}} sessionToken={sessionToken} onImport={replaceData} onCloudRestore={(data,updatedAt)=>{hydrateData(data);setCloudUpdatedAt(updatedAt);setCloudStatus("cloud");setToast("Cloud revision restored");setTimeout(()=>setToast(""),2000)}} onReset={resetData}/>}
+        {adminTab==='data' && <DataTools data={{players,games,awards,seasons,news,runs,polls,history,branding,rankings,submissions,sundaySessions,statBaseline,seasonSystem,seasonArchives}} sessionToken={sessionToken} onImport={replaceData} onCloudRestore={(data,updatedAt)=>{hydrateData(data);setCloudUpdatedAt(updatedAt);setCloudStatus("cloud");setToast("Cloud revision restored");setTimeout(()=>setToast(""),2000)}} onReset={resetData}/>}
         </>}
       </Page>}
 
@@ -684,7 +694,7 @@ function PlayerDirectoryCard({player,roster,isMyPlayer,onOpen,onPhotoSave}:{play
   return <article className="playerCard"><button className="playerCardOpen" onClick={onOpen}><div className="playerCardTop">{player.photoUrl?<img className="playerThumb" src={player.photoUrl} alt={`${player.name} profile`}/>:<span className="playerPhotoPlaceholder">{isMyPlayer?<><b>＋</b><small>Add Photo</small></>:initials(player.name)}</span>}<span className="bigAvatar">{rating??"PROV"}<small>{rating===null?"":"OVR"}</small></span></div><span className="pos">{player.jerseyNumber?`#${player.jerseyNumber} · `:""}{player.position}</span><h3>{player.name}</h3><div className="miniStats"><span><b>{avg(player.pts,player)}</b>PPG</span><span><b>{avg(player.reb,player)}</b>RPG</span><span><b>{avg(player.ast,player)}</b>APG</span></div><div className="record">{player.wins}-{player.losses}</div></button>{isMyPlayer&&<label className="quickPhotoButton">{busy?"Saving…":player.photoUrl?"Change Photo":"Add Profile Picture"}<input type="file" accept="image/*" disabled={busy} onChange={event=>{choose(event.target.files?.[0]);event.target.value=""}}/></label>}{error&&<small className="cardError">{error}</small>}</article>;
 }
 
-function PlayerUniverseProfile({player,roster,games,sundaySessions,nextRun,officialAwards,rank,isMyPlayer,onRsvp,onPhotoSave,onPositionChange,onProfileChange,onBack}:{player:Player;roster:Player[];games:Game[];sundaySessions:SundaySession[];nextRun?:SundayRun;officialAwards:Award[];rank:number;isMyPlayer:boolean;onRsvp:(runId:string,rsvp:Omit<RunRsvp,"updatedAt">)=>Promise<void>;onPhotoSave:(playerId:string,photoUrl:string)=>Promise<void>;onPositionChange:(playerId:string,position:string)=>Promise<void>;onProfileChange:(playerId:string,updates:{nickname?:string;position?:string;photoUrl?:string;archetypeChoice?:string;seenCareerBannerIds?:string[];careerStatusSeen?:boolean})=>Promise<void>;onBack:()=>void}){
+function PlayerUniverseProfile({player,roster,seasonPlayer:_,seasonRoster:__,activeSeasonName:___,games,sundaySessions,nextRun,officialAwards,rank,isMyPlayer,onRsvp,onPhotoSave,onPositionChange,onProfileChange,onBack}:{player:Player;roster:Player[];seasonPlayer:Player;seasonRoster:Player[];activeSeasonName:string;games:Game[];sundaySessions:SundaySession[];nextRun?:SundayRun;officialAwards:Award[];rank:number;isMyPlayer:boolean;onRsvp:(runId:string,rsvp:Omit<RunRsvp,"updatedAt">)=>Promise<void>;onPhotoSave:(playerId:string,photoUrl:string)=>Promise<void>;onPositionChange:(playerId:string,position:string)=>Promise<void>;onProfileChange:(playerId:string,updates:{nickname?:string;position?:string;photoUrl?:string;archetypeChoice?:string;seenCareerBannerIds?:string[];careerStatusSeen?:boolean})=>Promise<void>;onBack:()=>void}){
   const honors=[...new Set([...player.awards,...officialAwards.filter(award=>awardBelongsToPlayer(award,player)).map(a=>`${a.season} ${a.name}`)])];
   const logs=games.filter(game=>game.boxScore?.some(line=>line.playerId===player.id)).map(game=>({game,line:game.boxScore!.find(line=>line.playerId===player.id)!}));
   const rating=overallRating(player,roster,games);

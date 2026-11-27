@@ -32,8 +32,8 @@ export function version65Feature():Plugin{
       code=code.split('src={branding.logoUrl||initialBranding.logoUrl}').join('src="/ys-guys-logo.svg"');
 
       code=replaceRequired(code,
-        '  const latestRanking=rankings[0]??initialRankings[0];',
-        '  const latestRanking=rankings[0]??initialRankings[0];\n  const activeRuleVote=polls.find(poll=>poll.category==="Rule Vote"&&poll.status==="open"&&!poll.archived&&(!poll.deadline||new Date(poll.deadline).getTime()>=Date.now()));'
+        '  const latestRanking=activeSeasonRankings[0]??{id:`${activeSeasonId}-unranked`,week:0,date:"",publishedAt:"",entries:[]};',
+        '  const latestRanking=activeSeasonRankings[0]??{id:`${activeSeasonId}-unranked`,week:0,date:"",publishedAt:"",entries:[]};\n  const activeRuleVote=polls.find(poll=>poll.category==="Rule Vote"&&poll.status==="open"&&!poll.archived&&(!poll.deadline||new Date(poll.deadline).getTime()>=Date.now()));'
       );
 
       code=replaceRequired(code,

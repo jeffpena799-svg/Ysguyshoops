@@ -12,7 +12,7 @@ export function version68AroundLeague():Plugin{
       }
       const communityPattern=/\{view==="community" && <Page[\s\S]*?<\/Page>\}/;
       if(!communityPattern.test(code))throw new Error("Version 6.8 could not find the Around the League community view");
-      code=code.replace(communityPattern,'{view==="community" && <AroundLeague players={players} snapshot={latestRanking} onOpen={openProfile} getOverall={(player)=>overallRating(player,players)}/>}');
+      code=code.replace(communityPattern,'{view==="community" && <AroundLeague players={players} seasonPlayers={activeSeasonPlayers} activeSeasonName={activeSeasonName} snapshot={latestRanking} onOpen={openProfile} getOverall={(player)=>overallRating(player,players)}/>}');
       const styleAnchor='const styles = `';
       if(!code.includes(styleAnchor))throw new Error("Version 6.8 could not find app styles");
       const css=`
